@@ -1,0 +1,27 @@
+# Changelog
+
+All notable changes to this project are documented here. The project follows
+[Semantic Versioning](https://semver.org/): PATCH for fixes, MINOR for new features, MAJOR for
+changes that break existing scenes or settings.
+
+## [1.0.0] – 2026-09-23
+
+First public release.
+
+- **Guide** in seven steps with a check per step; blue buttons show the next action, red status
+  lines what is missing.
+- **1 Scene & Camera** – *Prepare Scene*: Cycles on the fastest GPU backend with scan render
+  settings; lens and look target of the scan camera.
+- **2 Look Target** – *Put Selection into Collection*, reuses an existing collection, frames the
+  geometry.
+- **3 Group & Align to Ground** – for objects that stand on a ground.
+- **4 Camera Sphere** – 20 to 1280 cameras; *Fill Each View* and *Center in Each View* make the
+  model fill and centre every square image; upper hemisphere or full sphere.
+- **5 Build Camera Animation** – one keyframe per camera, fresh from step 4; scene versions
+  (`<Name>_v001.blend`) with their own dataset folder; *Live Camera Adjust* for one view or the
+  whole sphere, with Cancel.
+- **6 Render Settings & Output** – render output straight into the dataset folder of the version.
+- **7 COLMAP Export** – cameras, poses and a start point cloud from all model vertices plus surface
+  points; GPU visibility filter; crop box; reuse of an unchanged point cloud; auto scale with the
+  factor in `<vNNN>_gscan_export.json`; works with Postshot and LichtFeld Studio.
+- Blender 4.1 or later; tested on 4.1, 4.4, 4.5, 5.0, 5.2 and 5.3.
