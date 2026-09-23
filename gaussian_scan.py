@@ -37,7 +37,7 @@ Code comments are in German.
 bl_info = {
     "name": "Gaussian Render Scan",
     "author": "Prof. Michael Klein - Mediadesign University of Applied Sciences",
-    "version": (1, 0, 1),
+    "version": (1, 0, 2),
     "blender": (4, 1, 0),
     "location": "View3D > Sidebar (N) > Gaussian Render Scan",
     "description": "Synthetic COLMAP datasets for Gaussian Splatting: camera "

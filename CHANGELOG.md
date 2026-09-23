@@ -4,6 +4,11 @@ All notable changes to this project are documented here. The project follows
 [Semantic Versioning](https://semver.org/): PATCH for fixes, MINOR for new features, MAJOR for
 changes that break existing scenes or settings.
 
+## [1.0.2] – 2026-09-23
+
+- Documentation: Linux (Ubuntu) and macOS (Apple Silicon) now tested with the automated test
+  suite on Blender 4.1 and 5.2 – all tests pass, including the GPU visibility filter.
+
 ## [1.0.1] – 2026-09-23
 
 - Documentation: supported platforms stated precisely – tested on Windows 11; Linux and macOS

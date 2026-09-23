@@ -44,9 +44,9 @@ Example model: LDraw model of set 10252 by Roland Dahl (RolandD), CC BY 2.0 – 
 
 ## Install
 
-Blender 4.1 or later; tested on 4.1, 4.4, 4.5, 5.0, 5.2 and 5.3 on Windows 11. Linux and macOS
-are expected to work – the add-on is pure Python and selects the Cycles GPU backend itself (OptiX,
-CUDA, HIP, Metal, oneAPI) – but are not tested yet; reports are welcome in the
+Blender 4.1 or later. Tested on Windows 11 (4.1, 4.4, 4.5, 5.0, 5.2, 5.3) and with the automated
+test suite on Linux (Ubuntu) and macOS (Apple Silicon) with Blender 4.1 and 5.2. GPU rendering on
+AMD, Intel and Apple GPUs has not been tried yet – reports are welcome in the
 [issues](https://github.com/virtualrepublic/Gaussian-Render-Scan/issues).
 
 For training: Postshot runs on Windows, LichtFeld Studio on Windows and Linux with an NVIDIA GPU.
