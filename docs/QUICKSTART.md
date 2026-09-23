@@ -5,12 +5,12 @@ The shortest way from a model to a Gaussian Splat. Each line is one click or one
 
 | # | In Blender | You see |
 |---|---|---|
-| 1 | Install `gaussian_scan.py` (*Preferences → Add-ons → Install from Disk*), enable it | Sidebar tab **Gaussian Render Scan** (press N) |
+| 1 | Install `gaussian_capture.py` (*Preferences → Add-ons → Install from Disk*), enable it | Sidebar tab **Gaussian Render Capture** (press N) |
 | 2 | Import your model | – |
 | 3 | **Start Guide** | Guide card, step 1 of 7 |
 | 4 | **Prepare Scene** | *Scene prepared (Cycles on GPU)* |
 | 5 | Select the model, **Put Selection into Collection** – or add its collection with **+** | *Target: …* |
-| 6 | Object on a ground: **Group & Align to Ground** – floating object: **Next** | *Grouped under 'GScan_Group'* |
+| 6 | Object on a ground: **Group & Align to Ground** – floating object: **Next** | *Grouped under 'GCapture_Group'* |
 | 7 | Subdivisions 3, **Create / Update Camera Sphere** (on a ground: *Upper Hemisphere Only*) | *Camera_Sphere: 320 cameras* |
 | 8 | **Build Camera Animation**, save as `<Name>_v001.blend` | *320 camera poses* |
 | 9 | Resolution **OK**, then **Render → Render Animation** | *All 320 images found* |

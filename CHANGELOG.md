@@ -4,6 +4,19 @@ All notable changes to this project are documented here. The project follows
 [Semantic Versioning](https://semver.org/): PATCH for fixes, MINOR for new features, MAJOR for
 changes that break existing scenes or settings.
 
+## [1.1.0] – 2026-09-23
+
+Renamed to **Gaussian Render Capture**: the add-on renders a capture – images plus camera poses –
+and does not scan anything real.
+
+- New file `gaussian_capture.py`, sidebar tab *Gaussian Render Capture*, operators `gcapture.*`,
+  empty *GCapture_Group*, collection *Capture_Rig*, info file `<vNNN>_gcapture_export.json`.
+- **Upgrade:** disable and remove *Gaussian Render Scan* (1.0.x), then install
+  `gaussian_capture.py`. Scenes made with 1.0.x are taken over when opened – all settings, the
+  markers of steps 1 and 5, the camera fit and live adjustments; save the scene to keep the new
+  names. Exporting such a dataset again replaces `<vNNN>_gscan_export.json` with the new file.
+- Tests: Linux, macOS and Windows with Blender 4.1 and 5.2, including the takeover of a 1.0.2 scene.
+
 ## [1.0.2] – 2026-09-23
 
 - Documentation: Linux (Ubuntu) and macOS (Apple Silicon) now tested with the automated test

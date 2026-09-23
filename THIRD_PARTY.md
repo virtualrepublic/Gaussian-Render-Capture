@@ -7,7 +7,7 @@ named to describe the example and compatibility.
 
 - **Gauss Cannon** by Warpgate Labs – GPL-3.0-or-later –
   <https://github.com/warpgatelabs/gauss-cannon>. The add-on started from it. Adapted from its
-  `utils/ray_casting.py` and still part of `gaussian_scan.py`: `_rc_is_camera_inside_mesh`,
+  `utils/ray_casting.py` and still part of `gaussian_capture.py`: `_rc_is_camera_inside_mesh`,
   `_rc_build_visible_mesh_bvh_cache`, `_rc_build_near_frustum_bvh`, `_rc_geometry_within_near_clip`
   (Skip Interior Cameras) and `_exp_build_scene_bvh` (ray-cast fallback of the visibility filter),
   plus the idea of a list of guide meshes. Everything else is original work.

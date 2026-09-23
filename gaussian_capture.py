@@ -1,10 +1,10 @@
 """
-Gaussian Render Scan - Blender add-on
+Gaussian Render Capture - Blender add-on
 =========================================================================
 Turns a 3D model into a ready-to-train COLMAP dataset for Gaussian
 Splatting (Postshot, LichtFeld Studio): cameras on a sphere around the
 model, one rendered image per camera, exact camera poses and a start point
-cloud. Panel: 3D viewport sidebar (N), tab "Gaussian Render Scan";
+cloud. Panel: 3D viewport sidebar (N), tab "Gaussian Render Capture";
 beginners press "Start Guide". Documentation: README.md and docs/.
 
 Copyright (C) 2026 Prof. Michael Klein
@@ -35,16 +35,16 @@ Code comments are in German.
 """
 
 bl_info = {
-    "name": "Gaussian Render Scan",
+    "name": "Gaussian Render Capture",
     "author": "Prof. Michael Klein - Mediadesign University of Applied Sciences",
-    "version": (1, 0, 2),
+    "version": (1, 1, 0),
     "blender": (4, 1, 0),
-    "location": "View3D > Sidebar (N) > Gaussian Render Scan",
+    "location": "View3D > Sidebar (N) > Gaussian Render Capture",
     "description": "Synthetic COLMAP datasets for Gaussian Splatting: camera "
                    "sphere, render, export for Postshot / LichtFeld. "
                    "Developed with Anthropic Claude as AI assistant",
-    "doc_url": "https://github.com/virtualrepublic/Gaussian-Render-Scan",
-    "tracker_url": "https://github.com/virtualrepublic/Gaussian-Render-Scan/issues",
+    "doc_url": "https://github.com/virtualrepublic/Gaussian-Render-Capture",
+    "tracker_url": "https://github.com/virtualrepublic/Gaussian-Render-Capture/issues",
     "license": ["SPDX:GPL-3.0-or-later"],
     "category": "Camera",
 }
@@ -65,7 +65,7 @@ from bpy.props import (StringProperty, IntProperty, EnumProperty,
 from bpy.types import Operator, Panel, PropertyGroup
 
 
-def _fco_on_param_change(settings, context):
+def _gcapture_on_param_change(settings, context):
     """Wird bei Aenderung interaktiver Parameter (z. B. Focal Length)
     aufgerufen. Setzt die Brennweite sofort auf die (bereits existierende)
     Kamera -- unabhaengig vom Live-Modus, da die Brennweite nur den
@@ -79,11 +79,11 @@ def _fco_on_param_change(settings, context):
 # ----------------------------------------------------------------------
 # Einstellungen (im N-Panel editierbar, in der .blend gespeichert)
 # ----------------------------------------------------------------------
-def _fco_on_guide_index_change(self, context):
+def _gcapture_on_guide_index_change(self, context):
     """Wird aufgerufen, wenn in der Guide-Liste ein Eintrag ausgewaehlt
     wird. Selektiert die zum Eintrag gehoerenden Objekte im Outliner/
     Viewport und macht das erste zum aktiven Objekt."""
-    s = context.scene.fco_settings
+    s = context.scene.gcapture_settings
     if not (0 <= s.guide_index < len(s.guides)):
         return
     item = s.guides[s.guide_index]
@@ -104,7 +104,7 @@ def _fco_on_guide_index_change(self, context):
         pass
 
 
-class FCO_GuideObjRef(PropertyGroup):
+class GCAPTURE_GuideObjRef(PropertyGroup):
     """Verweis auf ein einzelnes Mesh-Objekt innerhalb eines Guide-Eintrags."""
     obj: PointerProperty(
         name="Object",
@@ -113,7 +113,7 @@ class FCO_GuideObjRef(PropertyGroup):
     )
 
 
-class FCO_GuideItem(PropertyGroup):
+class GCAPTURE_GuideItem(PropertyGroup):
     """Ein Leitgitter-Eintrag: editierbares Label + eine oder mehrere
     Mesh-Objekte. Das Label ist ein reiner Anzeige-Alias; die echten
     Objektnamen bleiben unveraendert."""
@@ -123,10 +123,10 @@ class FCO_GuideItem(PropertyGroup):
                     "not rename the actual objects)",
         default="Guide",
     )
-    objects: CollectionProperty(type=FCO_GuideObjRef)
+    objects: CollectionProperty(type=GCAPTURE_GuideObjRef)
 
 
-class FCO_CollItem(PropertyGroup):
+class GCAPTURE_CollItem(PropertyGroup):
     """Ein Eintrag in der Ziel-Collection-Liste fuer die Auto-Skalierung
     der Kamera-Sphere."""
     coll: PointerProperty(
@@ -138,25 +138,25 @@ class FCO_CollItem(PropertyGroup):
 # Relative Pfade (//...) fuer Ordner-Properties erlauben (v107). Die Option
 # gibt es erst ab Blender 4.5; aeltere Versionen verweigern sonst die
 # Registrierung des ganzen Addons (v110-Fix).
-_FCO_PATH_OPTIONS = ({'PATH_SUPPORTS_BLEND_RELATIVE'}
+_GCAPTURE_PATH_OPTIONS = ({'PATH_SUPPORTS_BLEND_RELATIVE'}
                      if bpy.app.version >= (4, 5, 0) else set())
 
 
-def _fco_on_resolution(settings, context):
+def _gcapture_on_resolution(settings, context):
     """Aufloesung geaendert: anwenden und als bestaetigt merken (v140)."""
-    context.scene["gscan_res_ok"] = True
-    _fco_on_render_setting(settings, context)
+    context.scene["gcapture_res_ok"] = True
+    _gcapture_on_render_setting(settings, context)
 
 
-def _fco_on_render_setting(settings, context):
+def _gcapture_on_render_setting(settings, context):
     """Aenderung einer Render-Einstellung sofort anwenden (v127)."""
     try:
-        _fco_apply_render_setup(context.scene, settings)
+        _gcapture_apply_render_setup(context.scene, settings)
     except Exception as exc:
-        print("[Gaussian Render Scan] render setting not applied:", exc)
+        print("[Gaussian Render Capture] render setting not applied:", exc)
 
 
-class FCO_Settings(PropertyGroup):
+class GCAPTURE_Settings(PropertyGroup):
     camera_name: StringProperty(
         name="Camera Name",
         description="Name of the created/reused camera",
@@ -187,7 +187,7 @@ class FCO_Settings(PropertyGroup):
         name="Focal Length (mm)",
         description="Camera focal length in millimeters",
         default=50.0, min=1.0, max=5000.0, soft_max=300.0,
-        update=lambda self, context: _fco_on_param_change(self, context),
+        update=lambda self, context: _gcapture_on_param_change(self, context),
     )
     look_mode: EnumProperty(
         name="Look Target",
@@ -206,27 +206,27 @@ class FCO_Settings(PropertyGroup):
     )
     set_active_camera: BoolProperty(
         name="Set as Active Camera",
-        description="Make the scan camera the scene camera - at once and on "
+        description="Make the capture camera the scene camera - at once and on "
                     "every Build",
-        default=True, update=_fco_on_render_setting,
+        default=True, update=_gcapture_on_render_setting,
     )
     set_frame_range: BoolProperty(
         name="Set Scene Frame Range",
         description="Set the scene frame range to the camera keyframes - at "
                     "once and on every Build",
-        default=True, update=_fco_on_render_setting,
+        default=True, update=_gcapture_on_render_setting,
     )
     set_resolution: BoolProperty(
         name="Set Render Resolution",
         description="Set the square render resolution - at once and on every "
                     "Build",
-        default=True, update=_fco_on_render_setting,
+        default=True, update=_gcapture_on_render_setting,
     )
     resolution: IntProperty(
         name="Resolution (square)",
         description="Square render resolution in pixels (width = height), "
                     "applied at once",
-        default=1000, min=16, max=16384, update=_fco_on_resolution,
+        default=1000, min=16, max=16384, update=_gcapture_on_resolution,
     )
     wt_active: BoolProperty(
         name="Guide Active",
@@ -256,7 +256,7 @@ class FCO_Settings(PropertyGroup):
         description="Keyframes set to CONSTANT -- exactly one viewpoint per "
                     "frame, no interpolation in between (for render/COLMAP). "
                     "Applied at once and on every Build",
-        default=True, update=_fco_on_render_setting,
+        default=True, update=_gcapture_on_render_setting,
     )
     save_after_build: BoolProperty(
         name="Save Version after Build",
@@ -273,7 +273,7 @@ class FCO_Settings(PropertyGroup):
                     "or move (G) it. Finish with This Camera, All Cameras or "
                     "Cancel",
         default=False,
-        update=lambda self, context: _fco_on_lock_toggle(self, context),
+        update=lambda self, context: _gcapture_on_lock_toggle(self, context),
     )
     # --- COLMAP export settings ---
     exp_output_dir: StringProperty(
@@ -283,7 +283,7 @@ class FCO_Settings(PropertyGroup):
                     "the loaded version. Enter your own folder to override "
                     "(// = relative to the .blend); an own folder is left alone",
         default="", subtype='DIR_PATH',
-        options=_FCO_PATH_OPTIONS,
+        options=_GCAPTURE_PATH_OPTIONS,
     )
     exp_image_dir: StringProperty(
         name="Image Folder",
@@ -292,7 +292,7 @@ class FCO_Settings(PropertyGroup):
                     "with it. Enter your own folder to override (// = "
                     "relative to the .blend)",
         default="", subtype='DIR_PATH',
-        options=_FCO_PATH_OPTIONS,
+        options=_GCAPTURE_PATH_OPTIONS,
     )
     exp_image_mode: EnumProperty(
         name="Images",
@@ -388,7 +388,7 @@ class FCO_Settings(PropertyGroup):
                     "far above a few dozen units (a whole city) densified "
                     "badly in Postshot - the splat count did not grow; a few "
                     "units worked reliably. The factor is written to "
-                    "<vNNN>_gscan_export.json next to the dataset folder",
+                    "<vNNN>_gcapture_export.json next to the dataset folder",
         default=3.0, min=0.1, max=100.0,
     )
     exp_auto_scale: BoolProperty(
@@ -396,7 +396,7 @@ class FCO_Settings(PropertyGroup):
         description="Scale cameras and point cloud of the export so the "
                     "average camera distance equals Target Radius (the images "
                     "stay the same). Off -> factor 1.0, original units. "
-                    "The factor is written to <vNNN>_gscan_export.json next to the "
+                    "The factor is written to <vNNN>_gcapture_export.json next to the "
                     "dataset folder, so a trained "
                     "splat can be scaled back to the model",
         default=True,
@@ -488,7 +488,7 @@ class FCO_Settings(PropertyGroup):
                     "3=320, 4=1280 faces",
         default=2, min=1, max=7,
     )
-    sph_target_colls: CollectionProperty(type=FCO_CollItem)
+    sph_target_colls: CollectionProperty(type=GCAPTURE_CollItem)
     sph_coll_index: IntProperty(default=0)
     sph_margin: FloatProperty(
         name="Framing Margin",
@@ -539,10 +539,10 @@ class FCO_Settings(PropertyGroup):
         default=False,
     )
     # --- Multiple guide objects ---
-    guides: CollectionProperty(type=FCO_GuideItem)
+    guides: CollectionProperty(type=GCAPTURE_GuideItem)
     guide_index: IntProperty(
         default=0,
-        update=_fco_on_guide_index_change,
+        update=_gcapture_on_guide_index_change,
     )
     use_guide_list: BoolProperty(
         name="Use Guide List",
@@ -586,24 +586,24 @@ def face_centers_and_normals(obj):
     return data
 
 
-_FCO_RIG_COLL = "Scan_Rig"
+_GCAPTURE_RIG_COLL = "Capture_Rig"
 
 
-def _fco_rig_collection(scene):
+def _gcapture_rig_collection(scene):
     """Eigene Collection fuer Kamera und Camera Sphere (v136)."""
-    coll = bpy.data.collections.get(_FCO_RIG_COLL)
+    coll = bpy.data.collections.get(_GCAPTURE_RIG_COLL)
     if coll is None or coll.library is not None:
-        coll = bpy.data.collections.new(_FCO_RIG_COLL)
+        coll = bpy.data.collections.new(_GCAPTURE_RIG_COLL)
     if coll not in scene.collection.children_recursive:
         scene.collection.children.link(coll)
     return coll
 
 
-def _fco_move_to_rig(scene, obj):
+def _gcapture_move_to_rig(scene, obj):
     """Objekt nur noch in der Rig-Collection fuehren (v136)."""
     if obj is None:
         return
-    coll = _fco_rig_collection(scene)
+    coll = _gcapture_rig_collection(scene)
     if coll not in obj.users_collection:
         coll.objects.link(obj)
     for c in list(obj.users_collection):
@@ -614,15 +614,15 @@ def _fco_move_to_rig(scene, obj):
 def get_or_create_camera(name):
     cam = bpy.data.objects.get(name)
     if cam and cam.type == 'CAMERA':
-        _fco_move_to_rig(bpy.context.scene, cam)
+        _gcapture_move_to_rig(bpy.context.scene, cam)
         return cam
     cam_data = bpy.data.cameras.new(name)
     cam = bpy.data.objects.new(name, cam_data)
-    _fco_rig_collection(bpy.context.scene).objects.link(cam)
+    _gcapture_rig_collection(bpy.context.scene).objects.link(cam)
     return cam
 
 
-def _fco_apply_render_setup(scene, s):
+def _gcapture_apply_render_setup(scene, s):
     """Render-Einstellungen aus Schritt 5 auf die Szene anwenden (v127) --
     dasselbe, was Build am Ende tut, soweit Kamera/Keyframes schon da sind."""
     cam = bpy.data.objects.get(s.camera_name)
@@ -728,7 +728,7 @@ def setup_guide_object(obj, settings):
     return obj.name
 
 
-def _fco_has_custom_guides(s):
+def _gcapture_has_custom_guides(s):
     """True, wenn die Guide-Liste eigene Leitgitter enthaelt (andere als die
     von 'Camera Sphere' erzeugte Sphere)."""
     if not s.use_guide_list:
@@ -744,7 +744,7 @@ def _fco_has_custom_guides(s):
 def _collect_guide_objects(context, active_obj):
     """Liefert die Liste der zu verarbeitenden Leitgitter-Objekte.
     Bei aktivierter Guide-List die Collection, sonst das aktive Objekt."""
-    s = context.scene.fco_settings
+    s = context.scene.gcapture_settings
     if s.use_guide_list and len(s.guides) > 0:
         objs = []
         for item in s.guides:
@@ -763,10 +763,10 @@ def _collect_guide_objects(context, active_obj):
 
 # Custom-Property an der Kamera-Sphere: ihr Mittelpunkt in Objekt-
 # Koordinaten (= Zentrum der Ziel-Bounding-Box beim Erzeugen).
-_SPH_CENTER_PROP = "gscan_center"
+_SPH_CENTER_PROP = "gcapture_center"
 
 
-def _fco_sphere_origin_to_center(obj):
+def _gcapture_sphere_origin_to_center(obj):
     """Legt den Ursprung einer Camera Sphere in ihre Mitte, ohne sie zu
     verschieben (Spheres vor v95 hatten den Ursprung im Weltursprung). Nutzt
     den gespeicherten Mittelpunkt; ohne ihn bleibt alles, wie es ist.
@@ -839,9 +839,9 @@ def _guide_faces_with_targets(obj):
     return out
 
 
-_SPH_ADJ_FLAG = "gscan_adj"
-_SPH_ADJ_POS = "gscan_adj_pos"
-_SPH_ADJ_TGT = "gscan_adj_tgt"
+_SPH_ADJ_FLAG = "gcapture_adj"
+_SPH_ADJ_POS = "gcapture_adj_pos"
+_SPH_ADJ_TGT = "gcapture_adj_tgt"
 
 
 def _sph_view_adjustments(obj, n_faces):
@@ -861,7 +861,7 @@ def _sph_view_adjustments(obj, n_faces):
 
 def _sph_base_matrix(obj):
     """Lage der Sphere nach Create / Update (v133)."""
-    base = obj.get("gscan_base_loc")
+    base = obj.get("gcapture_base_loc")
     if base is not None and len(base) == 3:
         return Matrix.Translation(Vector(base))
     return Matrix.Translation(obj.matrix_world.translation)
@@ -871,14 +871,14 @@ def _sph_ensure_base(obj, s):
     """Spheres von vor v133 kennen ihre Lage nach Create / Update nicht:
     aus den Look-Target-Collections nachtragen, wie Create / Update sie
     berechnet (v134)."""
-    if obj is None or obj.get("gscan_base_loc") is not None:
+    if obj is None or obj.get("gcapture_base_loc") is not None:
         return
     try:
         bounds = _sph_world_bounds(_sph_collect_objects(s, exclude=obj))
     except Exception:
         bounds = None
     centre = bounds[2] if bounds else obj.matrix_world.translation
-    obj["gscan_base_loc"] = tuple(centre)
+    obj["gcapture_base_loc"] = tuple(centre)
 
 
 def _sph_has_adjustments(obj):
@@ -928,7 +928,7 @@ def _sph_store_view_adjustment(obj, face_idx, pos_local, tgt_local):
     obj.data.update()
 
 
-def _fco_look_dir_for(s, center, normal, geo_center, origin):
+def _gcapture_look_dir_for(s, center, normal, geo_center, origin):
     """Blickrichtung einer Kamera am Face, konsistent mit build_animation."""
     if s.look_mode == 'CENTER':
         look_dir = (geo_center - center)
@@ -941,7 +941,7 @@ def _fco_look_dir_for(s, center, normal, geo_center, origin):
     return look_dir.normalized()
 
 
-def _fco_all_guide_faces(context, active_obj=None, guide_objs=None):
+def _gcapture_all_guide_faces(context, active_obj=None, guide_objs=None):
     """Alle Faces aller aktuellen Leitgitter als flache Liste, in genau
     der Reihenfolge, die auch build_animation verwendet. Wenn guide_objs
     explizit uebergeben wird (z. B. die beim Lock gemerkten Objekte), wird
@@ -960,25 +960,25 @@ def _fco_all_guide_faces(context, active_obj=None, guide_objs=None):
 # an das Leitgitter. Folgt Skalierung/Bewegung sofort, ohne die ganze
 # Animation zu backen. Leichtgewichtiger Handler (eine Pose statt vieler).
 # ----------------------------------------------------------------------
-import bpy.app.handlers as _fco_handlers
+import bpy.app.handlers as _gcapture_handlers
 
-_FCO_LOCK_BUSY = False
-_FCO_LOCK_START_MW = {}    # Leitgitter-Name -> matrix_world beim Einschalten (v123)
+_GCAPTURE_LOCK_BUSY = False
+_GCAPTURE_LOCK_START_MW = {}    # Leitgitter-Name -> matrix_world beim Einschalten (v123)
 # Beim Einschalten eingefrorener Face-Index (Variante 1). Der Handler
 # haelt die Kamera immer an diesem Index, unabhaengig vom aktuellen Frame
 # -- das umgeht das fragile Frame-Lesen im Handler-Kontext. None = nichts
 # eingefroren.
-_FCO_LOCK_FROZEN_IDX = None
+_GCAPTURE_LOCK_FROZEN_IDX = None
 # Diagnose: schreibt in die Blender-System-Konsole, was der Lock tut.
-FCO_LOCK_DEBUG = False
+GCAPTURE_LOCK_DEBUG = False
 # Beim Einschalten gemerkte Leitgitter-Objekte. Der Handler darf sich
 # NICHT auf bpy.context.active_object verlassen -- das ist im Handler-
 # Kontext unzuverlaessig (das skalierte Objekt ist dort nicht zwingend
 # "aktiv"). Stattdessen merken wir die Guides beim Einschalten explizit.
-_FCO_LOCK_GUIDES = []
+_GCAPTURE_LOCK_GUIDES = []
 
 
-def _fco_redraw_view3d():
+def _gcapture_redraw_view3d():
     """Stoesst einen Redraw aller 3D-Viewports an. Nutzt tag_redraw() --
     das zeichnet nur neu und loest KEIN Depsgraph-Update aus (anders als
     cam.update_tag(), das im Handler eine Update-Schleife erzeugen wuerde).
@@ -997,7 +997,7 @@ def _fco_redraw_view3d():
                 area.tag_redraw()
 
 
-def _fco_lock_apply(context, scene=None, active_obj=None, tag_update=False):
+def _gcapture_lock_apply(context, scene=None, active_obj=None, tag_update=False):
     """Setzt die aktive Kamera fuer den aktuellen Frame an das zum Frame
     gehoerende Face (Frame - frame_start -> Face-Index). 'scene' wird
     explizit uebergeben (im Handler aus dem scene-Argument), weil
@@ -1011,27 +1011,27 @@ def _fco_lock_apply(context, scene=None, active_obj=None, tag_update=False):
     Face-Versatz beim Skalieren fuehrt."""
     if scene is None:
         scene = context.scene
-    s = scene.fco_settings
+    s = scene.gcapture_settings
     cam = bpy.data.objects.get(s.camera_name)
-    if FCO_LOCK_DEBUG:
-        print("[FCO Lock] apply: camera_name='%s' -> %s | scene.camera=%s"
+    if GCAPTURE_LOCK_DEBUG:
+        print("[GCAPTURE Lock] apply: camera_name='%s' -> %s | scene.camera=%s"
               % (s.camera_name,
                  cam.name if cam else "NOT FOUND",
                  scene.camera.name if scene.camera else "None"))
     if cam is None or cam.type != 'CAMERA':
         # Falls keine benannte Kamera existiert, die Szenenkamera nehmen.
         cam = scene.camera
-        if FCO_LOCK_DEBUG:
-            print("[FCO Lock] apply: falling back to scene.camera=%s"
+        if GCAPTURE_LOCK_DEBUG:
+            print("[GCAPTURE Lock] apply: falling back to scene.camera=%s"
                   % (cam.name if cam else "None"))
     if cam is None or cam.type != 'CAMERA':
-        if FCO_LOCK_DEBUG:
-            print("[FCO Lock] apply: NO usable camera -> abort")
+        if GCAPTURE_LOCK_DEBUG:
+            print("[GCAPTURE Lock] apply: NO usable camera -> abort")
         return False
 
     # Faces aus den beim Lock gemerkten Guides (robust gegen active_object).
-    lock_guides = [o for o in _FCO_LOCK_GUIDES if o is not None]
-    faces = _fco_all_guide_faces(context, active_obj,
+    lock_guides = [o for o in _GCAPTURE_LOCK_GUIDES if o is not None]
+    faces = _gcapture_all_guide_faces(context, active_obj,
                                  guide_objs=lock_guides if lock_guides else None)
     if not faces:
         return False
@@ -1040,15 +1040,15 @@ def _fco_lock_apply(context, scene=None, active_obj=None, tag_update=False):
     # verwenden -- NICHT den aktuellen Frame lesen. Das macht den Lock
     # robust gegen den fragilen Frame-Kontext im Handler. Nur als Fallback
     # (z. B. direkter Aufruf ohne Einfrieren) wird der Frame herangezogen.
-    if _FCO_LOCK_FROZEN_IDX is not None:
-        idx = _FCO_LOCK_FROZEN_IDX
+    if _GCAPTURE_LOCK_FROZEN_IDX is not None:
+        idx = _GCAPTURE_LOCK_FROZEN_IDX
     else:
         idx = scene.frame_current - s.frame_start
     if idx < 0 or idx >= len(faces):
         return False  # Index ausserhalb des gueltigen Face-Bereichs
 
     center, normal, geo_center, origin = faces[idx]
-    look_dir = _fco_look_dir_for(s, center, normal, geo_center, origin)
+    look_dir = _gcapture_look_dir_for(s, center, normal, geo_center, origin)
     cam.data.lens_unit = 'MILLIMETERS'
     cam.data.lens = s.focal_length
     cam.rotation_mode = 'QUATERNION'
@@ -1071,8 +1071,8 @@ def _fco_lock_apply(context, scene=None, active_obj=None, tag_update=False):
                 for kp in fcurve.keyframe_points:
                     if abs(kp.co[0] - target_frame) < 0.5:
                         kp.interpolation = 'CONSTANT'
-    if FCO_LOCK_DEBUG:
-        print("[FCO Lock] apply: set '%s' idx %d @frame %d, loc=(%.3f,%.3f,%.3f)"
+    if GCAPTURE_LOCK_DEBUG:
+        print("[GCAPTURE Lock] apply: set '%s' idx %d @frame %d, loc=(%.3f,%.3f,%.3f)"
               % (cam.name, idx, target_frame, center.x, center.y, center.z))
     # Depsgraph-Update nur taggen, wenn explizit gewuenscht (Toggle-
     # Einschalten, fuer den Redraw). Im Handler-Pfad NICHT -- sonst
@@ -1082,16 +1082,16 @@ def _fco_lock_apply(context, scene=None, active_obj=None, tag_update=False):
     return True
 
 
-def _fco_lock_handler(scene, depsgraph):
-    global _FCO_LOCK_BUSY
-    if FCO_LOCK_DEBUG:
-        print("[FCO Lock] handler FIRED. busy=%s" % _FCO_LOCK_BUSY)
-    if _FCO_LOCK_BUSY:
+def _gcapture_lock_handler(scene, depsgraph):
+    global _GCAPTURE_LOCK_BUSY
+    if GCAPTURE_LOCK_DEBUG:
+        print("[GCAPTURE Lock] handler FIRED. busy=%s" % _GCAPTURE_LOCK_BUSY)
+    if _GCAPTURE_LOCK_BUSY:
         return
-    s = getattr(scene, "fco_settings", None)
+    s = getattr(scene, "gcapture_settings", None)
     if not s or not s.live_lock:
-        if FCO_LOCK_DEBUG:
-            print("[FCO Lock] handler: lock off or no settings -> skip "
+        if GCAPTURE_LOCK_DEBUG:
+            print("[GCAPTURE Lock] handler: lock off or no settings -> skip "
                   "(live_lock=%s)" % (getattr(s, "live_lock", "n/a")))
         return
 
@@ -1099,21 +1099,21 @@ def _fco_lock_handler(scene, depsgraph):
     # ueber active_object (das ist im Handler unzuverlaessig -- genau das war
     # der Bug: das skalierte Camera_Array war nicht "aktiv", also matchte es
     # das watch-Set nicht und das Update galt als irrelevant).
-    guide_objs = [o for o in _FCO_LOCK_GUIDES if o is not None]
+    guide_objs = [o for o in _GCAPTURE_LOCK_GUIDES if o is not None]
     if not guide_objs:
         # Fallback: aus den aktuellen Einstellungen sammeln.
         guide_objs = _collect_guide_objects(bpy.context,
                                             bpy.context.active_object)
     if not guide_objs:
-        if FCO_LOCK_DEBUG:
-            print("[FCO Lock] handler: no guide objects -> skip")
+        if GCAPTURE_LOCK_DEBUG:
+            print("[GCAPTURE Lock] handler: no guide objects -> skip")
         return
     watch = set(guide_objs)
-    if FCO_LOCK_DEBUG:
+    if GCAPTURE_LOCK_DEBUG:
         names = [o.name for o in guide_objs]
         upd_names = [getattr(getattr(u.id, "original", u.id), "name", "?")
                      for u in depsgraph.updates]
-        print("[FCO Lock] handler: watching %s | updates this tick: %s"
+        print("[GCAPTURE Lock] handler: watching %s | updates this tick: %s"
               % (names, upd_names))
 
     # Variante 1: Der Face-Index ist eingefroren. Wir reagieren NUR auf
@@ -1124,8 +1124,8 @@ def _fco_lock_handler(scene, depsgraph):
     for upd in depsgraph.updates:
         orig = getattr(upd.id, "original", upd.id)
         if orig in watch:
-            if FCO_LOCK_DEBUG:
-                print("[FCO Lock] handler: update on guide '%s' "
+            if GCAPTURE_LOCK_DEBUG:
+                print("[GCAPTURE Lock] handler: update on guide '%s' "
                       "transform=%s geometry=%s"
                       % (orig.name,
                          getattr(upd, "is_updated_transform", "n/a"),
@@ -1137,79 +1137,79 @@ def _fco_lock_handler(scene, depsgraph):
     if not relevant:
         return
 
-    if FCO_LOCK_DEBUG:
-        print("[FCO Lock] handler: relevant update -> applying")
-    _FCO_LOCK_BUSY = True
+    if GCAPTURE_LOCK_DEBUG:
+        print("[GCAPTURE Lock] handler: relevant update -> applying")
+    _GCAPTURE_LOCK_BUSY = True
     try:
-        _fco_lock_apply(bpy.context, scene=scene)
+        _gcapture_lock_apply(bpy.context, scene=scene)
         # Viewport neu zeichnen, damit die Kamerabewegung sofort sichtbar
         # ist (tag_redraw loest KEIN Depsgraph-Update aus -> keine Schleife).
-        _fco_redraw_view3d()
+        _gcapture_redraw_view3d()
     except Exception as exc:
-        print("[Gaussian Render Scan] Live Camera Lock failed:", exc)
+        print("[Gaussian Render Capture] Live Camera Lock failed:", exc)
     finally:
-        _FCO_LOCK_BUSY = False
+        _GCAPTURE_LOCK_BUSY = False
 
 
-def _fco_lock_installed():
-    return _fco_lock_handler in _fco_handlers.depsgraph_update_post
+def _gcapture_lock_installed():
+    return _gcapture_lock_handler in _gcapture_handlers.depsgraph_update_post
 
 
-def _fco_lock_install():
-    if not _fco_lock_installed():
-        _fco_handlers.depsgraph_update_post.append(_fco_lock_handler)
+def _gcapture_lock_install():
+    if not _gcapture_lock_installed():
+        _gcapture_handlers.depsgraph_update_post.append(_gcapture_lock_handler)
 
 
-def _fco_lock_remove():
-    if _fco_lock_installed():
-        _fco_handlers.depsgraph_update_post.remove(_fco_lock_handler)
+def _gcapture_lock_remove():
+    if _gcapture_lock_installed():
+        _gcapture_handlers.depsgraph_update_post.remove(_gcapture_lock_handler)
 
 
-def _fco_on_lock_toggle(settings, context):
+def _gcapture_on_lock_toggle(settings, context):
     """Schaltet den Live-Camera-Lock-Handler an/aus. Beim Einschalten wird
     der Face-Index des AKTUELLEN Frames eingefroren (Variante 1); der Lock
     haelt die Kamera danach an diesem Index, auch beim Skalieren/Bewegen
     des Leitgitters. Fuer ein anderes Face: Lock aus- und wieder
     einschalten (friert dann den neuen Frame ein)."""
-    global _FCO_LOCK_BUSY, _FCO_LOCK_FROZEN_IDX, _FCO_LOCK_GUIDES
+    global _GCAPTURE_LOCK_BUSY, _GCAPTURE_LOCK_FROZEN_IDX, _GCAPTURE_LOCK_GUIDES
     if settings.live_lock:
         scene = context.scene
         # Aktuellen Frame-Index einfrieren.
-        _FCO_LOCK_FROZEN_IDX = scene.frame_current - settings.frame_start
+        _GCAPTURE_LOCK_FROZEN_IDX = scene.frame_current - settings.frame_start
         # Leitgitter JETZT merken (active_object ist hier, im Toggle-
         # Kontext, noch zuverlaessig -- im Handler spaeter nicht mehr).
-        _FCO_LOCK_GUIDES = _collect_guide_objects(context,
+        _GCAPTURE_LOCK_GUIDES = _collect_guide_objects(context,
                                                   context.active_object)
         # Lage der Leitgitter beim Einschalten (v123): "Only this camera"
         # setzt sie beim Beenden zurueck.
-        _FCO_LOCK_START_MW.clear()
-        for g in _FCO_LOCK_GUIDES:
+        _GCAPTURE_LOCK_START_MW.clear()
+        for g in _GCAPTURE_LOCK_GUIDES:
             if g is not None:
-                _FCO_LOCK_START_MW[g.name] = g.matrix_world.copy()
-        _fco_lock_install()
-        if FCO_LOCK_DEBUG:
-            print("[FCO Lock] toggle ON: frozen idx=%d, guides=%s, "
+                _GCAPTURE_LOCK_START_MW[g.name] = g.matrix_world.copy()
+        _gcapture_lock_install()
+        if GCAPTURE_LOCK_DEBUG:
+            print("[GCAPTURE Lock] toggle ON: frozen idx=%d, guides=%s, "
                   "handler installed=%s"
-                  % (_FCO_LOCK_FROZEN_IDX,
-                     [o.name for o in _FCO_LOCK_GUIDES if o],
-                     _fco_lock_installed()))
-        _FCO_LOCK_BUSY = True
+                  % (_GCAPTURE_LOCK_FROZEN_IDX,
+                     [o.name for o in _GCAPTURE_LOCK_GUIDES if o],
+                     _gcapture_lock_installed()))
+        _GCAPTURE_LOCK_BUSY = True
         try:
-            _fco_lock_apply(context, scene=scene,
+            _gcapture_lock_apply(context, scene=scene,
                             active_obj=context.active_object,
                             tag_update=True)
         except Exception as exc:
-            print("[Gaussian Render Scan] Live Camera Lock init failed:", exc)
+            print("[Gaussian Render Capture] Live Camera Lock init failed:", exc)
         finally:
-            _FCO_LOCK_BUSY = False
+            _GCAPTURE_LOCK_BUSY = False
         # Viewport-Redraw erzwingen -- im Property-update-Kontext wird sonst
         # nicht neu gezeichnet (Blender T74000), die Kamera saesse zwar
         # richtig, der Viewport zeigte aber noch den alten Stand.
-        _fco_redraw_view3d()
+        _gcapture_redraw_view3d()
     else:
-        _FCO_LOCK_FROZEN_IDX = None
-        _FCO_LOCK_GUIDES = []
-        _fco_lock_remove()
+        _GCAPTURE_LOCK_FROZEN_IDX = None
+        _GCAPTURE_LOCK_GUIDES = []
+        _gcapture_lock_remove()
 
 
 # ----------------------------------------------------------------------
@@ -1390,9 +1390,9 @@ def _sph_camera_min_fov(s, scene):
 
 # Mesh-Attribut der Camera Sphere (Face-Domain): Faktor, um den die
 # Kamera je Face zur Mitte rueckt (Fill Each View, v96).
-_SPH_FIT_ATTR = "gscan_fit"
+_SPH_FIT_ATTR = "gcapture_fit"
 _SPH_FIT_MIN = 0.6   # keine Kamera naeher als 60 % des Sphere-Abstands
-_SPH_SHIFT_ATTR = "gscan_shift"   # seitlicher Versatz je Kamera (v135)
+_SPH_SHIFT_ATTR = "gcapture_shift"   # seitlicher Versatz je Kamera (v135)
 
 
 def _sph_model_points(objs):
@@ -1555,14 +1555,14 @@ def _sph_required_radius(max_dim, fov, margin):
 # ----------------------------------------------------------------------
 # Operator
 # ----------------------------------------------------------------------
-class FCO_OT_guide_add(Operator):
-    bl_idname = "fco.guide_add"
+class GCAPTURE_OT_guide_add(Operator):
+    bl_idname = "gcapture.guide_add"
     bl_label = "Add Guide"
     bl_description = "Add the selected mesh objects to the guide list"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        s = context.scene.fco_settings
+        s = context.scene.gcapture_settings
         mesh_objs = [o for o in context.selected_objects if o.type == 'MESH']
         if not mesh_objs:
             self.report({'WARNING'}, "No mesh objects selected.")
@@ -1596,41 +1596,41 @@ class FCO_OT_guide_add(Operator):
         return {'FINISHED'}
 
 
-class FCO_OT_guide_remove(Operator):
-    bl_idname = "fco.guide_remove"
+class GCAPTURE_OT_guide_remove(Operator):
+    bl_idname = "gcapture.guide_remove"
     bl_label = "Remove Guide"
     bl_description = "Remove the selected guide from the list"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        s = context.scene.fco_settings
+        s = context.scene.gcapture_settings
         if 0 <= s.guide_index < len(s.guides):
             s.guides.remove(s.guide_index)
             s.guide_index = min(s.guide_index, len(s.guides) - 1)
         return {'FINISHED'}
 
 
-class FCO_OT_guide_clear(Operator):
-    bl_idname = "fco.guide_clear"
+class GCAPTURE_OT_guide_clear(Operator):
+    bl_idname = "gcapture.guide_clear"
     bl_label = "Clear Guides"
     bl_description = "Remove all guides from the list"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        context.scene.fco_settings.guides.clear()
-        context.scene.fco_settings.guide_index = 0
+        context.scene.gcapture_settings.guides.clear()
+        context.scene.gcapture_settings.guide_index = 0
         return {'FINISHED'}
 
 
-class FCO_OT_coll_add(Operator):
-    bl_idname = "fco.coll_add"
+class GCAPTURE_OT_coll_add(Operator):
+    bl_idname = "gcapture.coll_add"
     bl_label = "Add Collection"
     bl_description = ("Add the active object's collection (or the scene's "
                       "active collection) to the target list")
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        s = context.scene.fco_settings
+        s = context.scene.gcapture_settings
         # Bevorzugt die aktive Collection des View-Layers.
         coll = context.view_layer.active_layer_collection.collection
         if coll is None:
@@ -1647,14 +1647,14 @@ class FCO_OT_coll_add(Operator):
         return {'FINISHED'}
 
 
-class FCO_OT_coll_remove(Operator):
-    bl_idname = "fco.coll_remove"
+class GCAPTURE_OT_coll_remove(Operator):
+    bl_idname = "gcapture.coll_remove"
     bl_label = "Remove Collection"
     bl_description = "Remove the selected collection from the target list"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        s = context.scene.fco_settings
+        s = context.scene.gcapture_settings
         if 0 <= s.sph_coll_index < len(s.sph_target_colls):
             s.sph_target_colls.remove(s.sph_coll_index)
             s.sph_coll_index = min(s.sph_coll_index,
@@ -1662,15 +1662,15 @@ class FCO_OT_coll_remove(Operator):
         return {'FINISHED'}
 
 
-class FCO_OT_coll_clear(Operator):
-    bl_idname = "fco.coll_clear"
+class GCAPTURE_OT_coll_clear(Operator):
+    bl_idname = "gcapture.coll_clear"
     bl_label = "Clear Collections"
     bl_description = "Remove all collections from the target list"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        context.scene.fco_settings.sph_target_colls.clear()
-        context.scene.fco_settings.sph_coll_index = 0
+        context.scene.gcapture_settings.sph_target_colls.clear()
+        context.scene.gcapture_settings.sph_coll_index = 0
         return {'FINISHED'}
 
 
@@ -1762,7 +1762,7 @@ def _ga_world_bounds(objs, depsgraph, fast_bbox=False):
     return (mathutils.Vector(mn.tolist()), mathutils.Vector(mx.tolist()))
 
 
-def _fco_frame_collections(context, colls):
+def _gcapture_frame_collections(context, colls):
     """Rahmt die sichtbare Geometrie (Mesh) der Collections im 3D-Viewport ein
     (View Selected), im Viewport des Knopfs, sonst im ersten der Fenster.
     Die Auswahl wird danach wiederhergestellt (v117)."""
@@ -1790,7 +1790,7 @@ def _fco_frame_collections(context, colls):
         with context.temp_override(window=win, area=area, region=region):
             bpy.ops.view3d.view_selected()
     except Exception as exc:
-        print("[Gaussian Render Scan] framing skipped: %s" % exc)
+        print("[Gaussian Render Capture] framing skipped: %s" % exc)
     finally:
         for o in objs:
             try:
@@ -1805,27 +1805,27 @@ def _fco_frame_collections(context, colls):
         vl.objects.active = prev_act
 
 
-class FCO_OT_group_align(Operator):
-    bl_idname = "fco.group_align"
+class GCAPTURE_OT_group_align(Operator):
+    bl_idname = "gcapture.group_align"
     bl_label = "Group & Align to Ground"
     bl_description = ("Group the top-level objects of the target collection(s) "
-                     "under an Empty 'GScan_Group'. The Empty sits centered in "
+                     "under an Empty 'GCapture_Group'. The Empty sits centered in "
                      "X/Y and at the lowest point (ground) in Z. The whole "
                      "group is then moved so the ground sits on Z=0. Existing "
                      "sub-groups are kept intact; child transforms are "
                      "preserved")
     bl_options = {'REGISTER', 'UNDO'}
 
-    EMPTY_NAME = "GScan_Group"
+    EMPTY_NAME = "GCapture_Group"
 
     @classmethod
     def poll(cls, context):
-        s = context.scene.fco_settings
+        s = context.scene.gcapture_settings
         return len(s.sph_target_colls) > 0
 
     def execute(self, context):
         import mathutils
-        s = context.scene.fco_settings
+        s = context.scene.gcapture_settings
         colls = [it.coll for it in s.sph_target_colls if it.coll]
         if not colls:
             self.report({'ERROR'}, "No target collection set.")
@@ -1854,7 +1854,7 @@ class FCO_OT_group_align(Operator):
         # Auto steht mittig ueber dem Ursprung, Raeder auf Z=0.
         d = -ref
 
-        # Vorhandenes GScan_Group-Empty wiederverwenden oder neu anlegen.
+        # Vorhandenes GCapture_Group-Empty wiederverwenden oder neu anlegen.
         empty = bpy.data.objects.get(self.EMPTY_NAME)
         if empty is None or empty.type != 'EMPTY':
             empty = bpy.data.objects.new(self.EMPTY_NAME, None)
@@ -1892,12 +1892,12 @@ class FCO_OT_group_align(Operator):
             "Grouped %d top object(s) under '%s' at world origin. Ground on "
             "Z=0. Sphere center will be at Z=%.3f (volume center)."
             % (len(tops), self.EMPTY_NAME, sph_center_z))
-        _fco_frame_collections(context, colls)
+        _gcapture_frame_collections(context, colls)
         return {'FINISHED'}
 
 
-class FCO_OT_make_sphere(Operator):
-    bl_idname = "fco.make_sphere"
+class GCAPTURE_OT_make_sphere(Operator):
+    bl_idname = "gcapture.make_sphere"
     bl_label = "Create / Update Camera Sphere"
     bl_description = ("Create an Ico-Sphere camera array, auto-scaled so the "
                       "target collections' objects are fully framed from "
@@ -1908,11 +1908,11 @@ class FCO_OT_make_sphere(Operator):
 
     @classmethod
     def poll(cls, context):
-        return len(context.scene.fco_settings.sph_target_colls) > 0
+        return len(context.scene.gcapture_settings.sph_target_colls) > 0
 
     def execute(self, context):
         import bmesh as _bm
-        s = context.scene.fco_settings
+        s = context.scene.gcapture_settings
         scene = context.scene
 
         # Vorhandene Sphere ZUERST ermitteln (vor der Bounds-Berechnung),
@@ -2049,15 +2049,15 @@ class FCO_OT_make_sphere(Operator):
                 bpy.data.meshes.remove(old_mesh)
         else:
             sphere_obj = bpy.data.objects.new(self.SPHERE_NAME, new_mesh)
-            _fco_rig_collection(context.scene).objects.link(sphere_obj)
+            _gcapture_rig_collection(context.scene).objects.link(sphere_obj)
 
-        _fco_move_to_rig(context.scene, sphere_obj)   # eigene Collection (v136)
+        _gcapture_move_to_rig(context.scene, sphere_obj)   # eigene Collection (v136)
         # Objekt-Transform: nur die Position (Zentrum); die Skalierung
         # steckt in den Vertices.
         sphere_obj.matrix_world = Matrix.Translation(center)
         # Lage nach Create / Update (v133): Build setzt die Sphere hierher
         # zurueck und verwirft damit Live-Camera-Adjust-Aenderungen.
-        sphere_obj["gscan_base_loc"] = tuple(center)
+        sphere_obj["gcapture_base_loc"] = tuple(center)
         # Mittelpunkt merken (Objekt-Koordinaten, also der Ursprung):
         # Zielpunkt der Kameras im CENTER-Modus, auch bei der Halbkugel.
         sphere_obj[_SPH_CENTER_PROP] = (0.0, 0.0, 0.0)
@@ -2122,8 +2122,8 @@ class FCO_OT_make_sphere(Operator):
         return {'FINISHED'}
 
 
-class FCO_OT_lock_start(Operator):
-    bl_idname = "fco.lock_start"
+class GCAPTURE_OT_lock_start(Operator):
+    bl_idname = "gcapture.lock_start"
     bl_label = "Live Camera Adjust"
     bl_description = ("Adjust the camera of the current frame live: selects the "
                       "sphere; press S in the viewport to scale it (G to move) "
@@ -2133,12 +2133,12 @@ class FCO_OT_lock_start(Operator):
 
     @classmethod
     def poll(cls, context):
-        s = context.scene.fco_settings
+        s = context.scene.gcapture_settings
         return (not s.live_lock and
                 bool(_collect_guide_objects(context, context.active_object)))
 
     def invoke(self, context, event):
-        s = context.scene.fco_settings
+        s = context.scene.gcapture_settings
         sph = s.sph_object
         if sph is None or sph.name not in context.scene.objects:
             guides = _collect_guide_objects(context, context.active_object)
@@ -2147,7 +2147,7 @@ class FCO_OT_lock_start(Operator):
             self.report({'ERROR'}, "No camera sphere in the scene.")
             return {'CANCELLED'}
         # Aeltere Sphere: Ursprung in die Mitte, damit S um die Mitte skaliert.
-        _fco_sphere_origin_to_center(sph)
+        _gcapture_sphere_origin_to_center(sph)
         # Lage nach Create / Update nachtragen, damit Build G/S zuruecksetzt.
         _sph_ensure_base(sph, s)
         # Sphere als einziges Objekt auswaehlen und aktiv setzen.
@@ -2165,8 +2165,8 @@ class FCO_OT_lock_start(Operator):
         return {'FINISHED'}
 
 
-class FCO_OT_lock_finish(Operator):
-    bl_idname = "fco.lock_finish"
+class GCAPTURE_OT_lock_finish(Operator):
+    bl_idname = "gcapture.lock_finish"
     bl_label = "Finish Live Camera Adjust"
     bl_description = ("Finish Live Camera Adjust and apply the adjustment to "
                       "this camera only or to all cameras")
@@ -2188,23 +2188,23 @@ class FCO_OT_lock_finish(Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.scene.fco_settings.live_lock
+        return context.scene.gcapture_settings.live_lock
 
     def execute(self, context):
-        global _FCO_LOCK_BUSY
-        s = context.scene.fco_settings
+        global _GCAPTURE_LOCK_BUSY
+        s = context.scene.gcapture_settings
         if self.apply_to == 'CANCEL':
             # Sphere zuruecksetzen und die Kamera des eingefrorenen Frames
             # noch mit aktivem Lock neu setzen (Keyframe), dann Lock aus (v132).
-            for g in _FCO_LOCK_GUIDES:
-                if g is not None and g.name in _FCO_LOCK_START_MW:
-                    g.matrix_world = _FCO_LOCK_START_MW[g.name]
+            for g in _GCAPTURE_LOCK_GUIDES:
+                if g is not None and g.name in _GCAPTURE_LOCK_START_MW:
+                    g.matrix_world = _GCAPTURE_LOCK_START_MW[g.name]
             context.view_layer.update()
-            _FCO_LOCK_BUSY = True
+            _GCAPTURE_LOCK_BUSY = True
             try:
-                _fco_lock_apply(context, scene=context.scene)
+                _gcapture_lock_apply(context, scene=context.scene)
             finally:
-                _FCO_LOCK_BUSY = False
+                _GCAPTURE_LOCK_BUSY = False
             s.live_lock = False
             self.report({'INFO'}, "Live Camera Adjust cancelled - sphere and "
                         "camera are back.")
@@ -2212,8 +2212,8 @@ class FCO_OT_lock_finish(Operator):
         if self.apply_to == 'THIS':
             # Erst den Lock aus (Handler weg), dann Pose speichern und die
             # Sphere zuruecksetzen -- sonst zoege der Handler die Kamera mit.
-            idx = _FCO_LOCK_FROZEN_IDX
-            guides = [g for g in _FCO_LOCK_GUIDES if g is not None]
+            idx = _GCAPTURE_LOCK_FROZEN_IDX
+            guides = [g for g in _GCAPTURE_LOCK_GUIDES if g is not None]
             s.live_lock = False
             msg = self._keep_this_view(idx, guides)
             self.report({'INFO'}, msg)
@@ -2221,15 +2221,15 @@ class FCO_OT_lock_finish(Operator):
             if (s.save_after_build and not bpy.app.background
                     and getattr(context, "window", None)):
                 try:
-                    bpy.ops.fco.save_version('INVOKE_DEFAULT')
+                    bpy.ops.gcapture.save_version('INVOKE_DEFAULT')
                 except Exception as exc:
-                    print("[Gaussian Render Scan] Save prompt failed:", exc)
+                    print("[Gaussian Render Capture] Save prompt failed:", exc)
             return {'FINISHED'}
-        # Lock ausschalten (loest _fco_on_lock_toggle aus -> Handler weg,
+        # Lock ausschalten (loest _gcapture_on_lock_toggle aus -> Handler weg,
         # Frozen-Index zurueck).
         s.live_lock = False
         # Vollstaendige Neuberechnung ueber den modalen Build-Operator.
-        bpy.ops.fco.build_animation('INVOKE_DEFAULT', keep_adjustments=True)
+        bpy.ops.gcapture.build_animation('INVOKE_DEFAULT', keep_adjustments=True)
         self.report({'INFO'}, "Live adjust finished -> rebuilding all poses.")
         return {'FINISHED'}
 
@@ -2244,21 +2244,21 @@ class FCO_OT_lock_finish(Operator):
             faces = _guide_faces_with_targets(g)
             if idx < base + len(faces):
                 center, _, geo_center, _ = faces[idx - base]
-                mw0 = _FCO_LOCK_START_MW.get(g.name, g.matrix_world.copy())
+                mw0 = _GCAPTURE_LOCK_START_MW.get(g.name, g.matrix_world.copy())
                 inv = mw0.inverted()
                 _sph_store_view_adjustment(g, idx - base, inv @ center,
                                            inv @ geo_center)
                 for other in guides:
-                    if other.name in _FCO_LOCK_START_MW:
-                        other.matrix_world = _FCO_LOCK_START_MW[other.name]
+                    if other.name in _GCAPTURE_LOCK_START_MW:
+                        other.matrix_world = _GCAPTURE_LOCK_START_MW[other.name]
                 return ("Live adjust finished -> view %d kept for this camera "
                         "only; the sphere is back." % (idx + 1))
             base += len(faces)
         return "Live adjust finished."
 
 
-class FCO_OT_build(Operator):
-    bl_idname = "fco.build_animation"
+class GCAPTURE_OT_build(Operator):
+    bl_idname = "gcapture.build_animation"
     bl_label = "Build Camera Animation"
     bl_description = ("Builds a camera animation from the faces of the camera "
                       "sphere (one keyframe per face), fresh from the step 4 "
@@ -2276,7 +2276,7 @@ class FCO_OT_build(Operator):
     def poll(cls, context):
         if cls._is_running:
             return False
-        s = context.scene.fco_settings
+        s = context.scene.gcapture_settings
         # Waehrend Live Camera Lock aktiv ist gesperrt -- erst Finish Live
         # Adjust ausfuehren, sonst wuerden die live angepassten Keyframes
         # ueberschrieben.
@@ -2288,7 +2288,7 @@ class FCO_OT_build(Operator):
         return obj is not None and obj.type == 'MESH'
 
     def _setup(self, context):
-        s = context.scene.fco_settings
+        s = context.scene.gcapture_settings
         obj = context.active_object
         self._use_list = s.use_guide_list and len(s.guides) > 0
         if not self._use_list and (obj is None or obj.type != 'MESH'):
@@ -2328,7 +2328,7 @@ class FCO_OT_build(Operator):
         # Interior-Erkennung vorbereiten (einmalig). Nur mit eigenen
         # Leitgittern wirksam: die Kamera-Sphere liegt immer ausserhalb des
         # Modells, dort wuerde der Test nur bremsen (v93).
-        self._skip_interior = s.skip_interior and _fco_has_custom_guides(s)
+        self._skip_interior = s.skip_interior and _gcapture_has_custom_guides(s)
         self._s = s
         self._guide_set = set(self._guide_objs)
         self._bvh_cache = None
@@ -2381,7 +2381,7 @@ class FCO_OT_build(Operator):
 
     def invoke(self, context, event):
         # Warnung, wenn Live-Camera-Adjust-Aenderungen verloren gingen (v133).
-        s = context.scene.fco_settings
+        s = context.scene.gcapture_settings
         if s.sph_object is not None:
             _sph_ensure_base(s.sph_object, s)     # aeltere Spheres (v134)
         if (not self.keep_adjustments
@@ -2405,7 +2405,7 @@ class FCO_OT_build(Operator):
             self.report({'ERROR'}, str(exc))
             return {'CANCELLED'}
 
-        FCO_OT_build._is_running = True
+        GCAPTURE_OT_build._is_running = True
         wm = context.window_manager
         self._timer = wm.event_timer_add(0.02, window=context.window)
         wm.modal_handler_add(self)
@@ -2504,9 +2504,9 @@ class FCO_OT_build(Operator):
         if (s.save_after_build and not bpy.app.background
                 and getattr(context, "window", None)):
             try:
-                bpy.ops.fco.save_version('INVOKE_DEFAULT')
+                bpy.ops.gcapture.save_version('INVOKE_DEFAULT')
             except Exception as exc:
-                print("[Gaussian Render Scan] Save prompt failed:", exc)
+                print("[Gaussian Render Capture] Save prompt failed:", exc)
         return {'FINISHED'}
 
     def _cleanup(self, context):
@@ -2516,13 +2516,13 @@ class FCO_OT_build(Operator):
         if context.area:
             context.area.header_text_set(None)
         self._bvh_cache = None
-        FCO_OT_build._is_running = False
+        GCAPTURE_OT_build._is_running = False
 
 
 # ----------------------------------------------------------------------
 # UIList fuer die Guide-Eintraege (editierbares Label + Objektanzahl)
 # ----------------------------------------------------------------------
-class FCO_UL_guides(bpy.types.UIList):
+class GCAPTURE_UL_guides(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon,
                   active_data, active_propname, index):
         n = len(item.objects)
@@ -2538,7 +2538,7 @@ class FCO_UL_guides(bpy.types.UIList):
             layout.label(text=item.label)
 
 
-class FCO_UL_colls(bpy.types.UIList):
+class GCAPTURE_UL_colls(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon,
                   active_data, active_propname, index):
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
@@ -2561,12 +2561,12 @@ class FCO_UL_colls(bpy.types.UIList):
 # Registrieren mit numpy gezeichnet, als PNG in einen Cache-Ordner
 # geschrieben und ueber bpy.utils.previews geladen. Kein bpy.data-Zugriff
 # (beim Start eingeschraenkt), PNG-Kodierung per zlib.
-import struct as _fco_struct
-import tempfile as _fco_tempfile
-import zlib as _fco_zlib
+import struct as _gcapture_struct
+import tempfile as _gcapture_tempfile
+import zlib as _gcapture_zlib
 
 # Phasenfarben wie in der Workflow-Grafik: orange -> gelb -> gruen -> blau (sRGB 0..1).
-_FCO_BADGE_RGB = {
+_GCAPTURE_BADGE_RGB = {
     'PREP': (0.93, 0.50, 0.13),      # orange: Vorbereiten
     'CAMERAS': (0.95, 0.80, 0.16),   # gelb:   Kameras
     'OUTPUT': (0.33, 0.70, 0.28),    # gruen:  Rendern
@@ -2574,7 +2574,7 @@ _FCO_BADGE_RGB = {
     'NEUTRAL': (0.92, 0.92, 0.92),   # weiss:  keine Phase (Camera Settings)
 }
 # Ziffern als Strichzuege in einem Einheitsquadrat (x rechts, y oben).
-_FCO_DIGIT_STROKES = {
+_GCAPTURE_DIGIT_STROKES = {
     "1": [[(0.30, 0.78), (0.56, 0.96), (0.56, 0.04)]],
     "2": [[(0.18, 0.74), (0.28, 0.90), (0.50, 0.97), (0.72, 0.90),
            (0.82, 0.72), (0.76, 0.54), (0.18, 0.04), (0.84, 0.04)]],
@@ -2592,20 +2592,20 @@ _FCO_DIGIT_STROKES = {
            (0.19, 0.36)]],
 }
 # Plaketten: Name -> (Phase, Ziffer; None = Punkt ohne Nummer, "" = leer).
-_FCO_BADGES = {
-    'fco_cam': ('PREP', "1"),        # Einstieg = Schritt 1 (v147)
-    'fco_1': ('PREP', "2"),
-    'fco_2': ('PREP', "3"),
-    'fco_3': ('CAMERAS', "4"),
-    'fco_4': ('CAMERAS', "5"),
-    'fco_5': ('OUTPUT', "6"),
-    'fco_6': ('COLMAP', "7"),
+_GCAPTURE_BADGES = {
+    'gcapture_cam': ('PREP', "1"),        # Einstieg = Schritt 1 (v147)
+    'gcapture_1': ('PREP', "2"),
+    'gcapture_2': ('PREP', "3"),
+    'gcapture_3': ('CAMERAS', "4"),
+    'gcapture_4': ('CAMERAS', "5"),
+    'gcapture_5': ('OUTPUT', "6"),
+    'gcapture_6': ('COLMAP', "7"),
 }
-_FCO_ICON_VERSION = 5   # bei Aenderung am Aussehen erhoehen (Cache-Ordner)
-_fco_previews = None
+_GCAPTURE_ICON_VERSION = 6   # bei Aenderung am Aussehen erhoehen (Cache-Ordner)
+_gcapture_previews = None
 
 
-def _fco_badge_rgba(rgb, digit, size=64):
+def _gcapture_badge_rgba(rgb, digit, size=64):
     """RGBA-Array (size, size, 4) uint8: gefuellter Kreis in Phasenfarbe,
     darauf die Ziffer fett in Dunkelgrau (oder ein kleiner Punkt).
     Kantenglaettung analytisch ueber den Abstand."""
@@ -2621,7 +2621,7 @@ def _fco_badge_rgba(rgb, digit, size=64):
         bx0, by0, bw, bh = 0.30, 0.22, 0.40, 0.56
         half_w = 0.052   # halbe Strichstaerke -> fett
         dmin = np.full_like(x, 1e9)
-        for stroke in _FCO_DIGIT_STROKES[digit]:
+        for stroke in _GCAPTURE_DIGIT_STROKES[digit]:
             pts = [(bx0 + u * bw, by0 + v * bh) for (u, v) in stroke]
             for (ax, ay), (cx, cy) in zip(pts[:-1], pts[1:]):
                 ex, ey = cx - ax, cy - ay
@@ -2644,72 +2644,72 @@ def _fco_badge_rgba(rgb, digit, size=64):
     return (np.clip(rgba, 0.0, 1.0) * 255.0 + 0.5).astype(np.uint8)
 
 
-def _fco_write_png(path, rgba):
+def _gcapture_write_png(path, rgba):
     """Minimaler PNG-Schreiber (RGBA, 8 Bit) ohne Zusatzbibliothek."""
     h, w = rgba.shape[:2]
     raw = b"".join(b"\x00" + rgba[row].tobytes() for row in range(h))
 
     def chunk(tag, data):
-        crc = _fco_zlib.crc32(tag + data) & 0xFFFFFFFF
-        return (_fco_struct.pack(">I", len(data)) + tag + data +
-                _fco_struct.pack(">I", crc))
+        crc = _gcapture_zlib.crc32(tag + data) & 0xFFFFFFFF
+        return (_gcapture_struct.pack(">I", len(data)) + tag + data +
+                _gcapture_struct.pack(">I", crc))
     png = (b"\x89PNG\r\n\x1a\n" +
-           chunk(b"IHDR", _fco_struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0)) +
-           chunk(b"IDAT", _fco_zlib.compress(raw, 9)) +
+           chunk(b"IHDR", _gcapture_struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0)) +
+           chunk(b"IDAT", _gcapture_zlib.compress(raw, 9)) +
            chunk(b"IEND", b""))
     with open(path, "wb") as f:
         f.write(png)
 
 
-def _fco_icons_load():
+def _gcapture_icons_load():
     """Plaketten erzeugen (einmal pro Icon-Version) und laden. Scheitert
-    etwas, bleibt _fco_previews None -> Panels fallen auf Blender-Icons
+    etwas, bleibt _gcapture_previews None -> Panels fallen auf Blender-Icons
     zurueck."""
-    global _fco_previews
+    global _gcapture_previews
     try:
         import bpy.utils.previews
-        folder = os.path.join(_fco_tempfile.gettempdir(),
-                              "gaussian_blender_scan_icons_v%d"
-                              % _FCO_ICON_VERSION)
+        folder = os.path.join(_gcapture_tempfile.gettempdir(),
+                              "gaussian_render_capture_icons_v%d"
+                              % _GCAPTURE_ICON_VERSION)
         os.makedirs(folder, exist_ok=True)
         pcoll = bpy.utils.previews.new()
-        for name, (phase, digit) in _FCO_BADGES.items():
+        for name, (phase, digit) in _GCAPTURE_BADGES.items():
             path = os.path.join(folder, name + ".png")
             if not os.path.isfile(path):
-                _fco_write_png(path, _fco_badge_rgba(_FCO_BADGE_RGB[phase],
+                _gcapture_write_png(path, _gcapture_badge_rgba(_GCAPTURE_BADGE_RGB[phase],
                                                      digit))
             pcoll.load(name, path, 'IMAGE')
-        _fco_previews = pcoll
+        _gcapture_previews = pcoll
     except Exception as exc:
-        print("[Gaussian Render Scan] Step icons unavailable:", exc)
-        _fco_previews = None
+        print("[Gaussian Render Capture] Step icons unavailable:", exc)
+        _gcapture_previews = None
 
 
-def _fco_icons_unload():
-    global _fco_previews
-    if _fco_previews is not None:
+def _gcapture_icons_unload():
+    global _gcapture_previews
+    if _gcapture_previews is not None:
         try:
             import bpy.utils.previews
-            bpy.utils.previews.remove(_fco_previews)
+            bpy.utils.previews.remove(_gcapture_previews)
         except Exception:
             pass
-    _fco_previews = None
+    _gcapture_previews = None
 
 
 # Farben der Arbeitsphasen (Icons der Collection-Color-Tags). Blender
 # erlaubt Addons keine eingefaerbten Boxen -- farbig sind nur Icons. Rot
 # (COLLECTION_COLOR_01) bleibt fuer Warnungen (alert) reserviert.
 # Reihenfolge wie eine Ampel: orange -> gelb -> gruen (v86).
-_FCO_COLOR_PREP = 'COLLECTION_COLOR_02'     # orange: Vorbereiten
-_FCO_COLOR_CAMERAS = 'COLLECTION_COLOR_03'  # gelb:   Kameras
-_FCO_COLOR_OUTPUT = 'COLLECTION_COLOR_04'   # gruen:  Rendern
-_FCO_COLOR_COLMAP = 'COLLECTION_COLOR_05'   # blau:   COLMAP-Export (v146)
+_GCAPTURE_COLOR_PREP = 'COLLECTION_COLOR_02'     # orange: Vorbereiten
+_GCAPTURE_COLOR_CAMERAS = 'COLLECTION_COLOR_03'  # gelb:   Kameras
+_GCAPTURE_COLOR_OUTPUT = 'COLLECTION_COLOR_04'   # gruen:  Rendern
+_GCAPTURE_COLOR_COLMAP = 'COLLECTION_COLOR_05'   # blau:   COLMAP-Export (v146)
 
 
 # ----------------------------------------------------------------------
 # Einsteigerhilfen (v90): Auswahl in eine Collection, Szenenversionen
 # ----------------------------------------------------------------------
-def _fco_version_files(folder, name):
+def _gcapture_version_files(folder, name):
     """Vorhandene Versionsnummern von <name>_vNNN*.blend im Ordner."""
     found = []
     if not folder or not os.path.isdir(folder):
@@ -2722,14 +2722,14 @@ def _fco_version_files(folder, name):
     return found
 
 
-def _fco_next_version_path(folder, name, width=3):
+def _gcapture_next_version_path(folder, name, width=3):
     """Pfad der naechsten freien Version <name>_vNNN.blend im Ordner."""
-    nums = _fco_version_files(folder, name)
+    nums = _gcapture_version_files(folder, name)
     nxt = (max(nums) + 1) if nums else 1
     return os.path.join(folder, "%s_v%0*d.blend" % (name, width, nxt))
 
 
-def _fco_clean_name(raw):
+def _gcapture_clean_name(raw):
     """Szenenname ohne Endung, Versions-Token und unzulaessige Zeichen."""
     stem = os.path.splitext(os.path.basename(raw or ""))[0]
     name, _ = _exp_split_name_version(stem)
@@ -2737,7 +2737,7 @@ def _fco_clean_name(raw):
     return name or "Scene"
 
 
-def _fco_managed_render_path(name, vtag):
+def _gcapture_managed_render_path(name, vtag):
     """Relativer Renderpfad direkt in den Datensatz:
     //<Name>_COLMAP/<vNNN>/images/<Name>_<vNNN>_"""
     return "//%s_COLMAP/%s/images/%s_%s_" % (name, vtag, name, vtag)
@@ -2745,43 +2745,43 @@ def _fco_managed_render_path(name, vtag):
 
 from bpy.app.handlers import persistent
 
-_FCO_MANAGED_RX = re.compile(
+_GCAPTURE_MANAGED_RX = re.compile(
     r"^//(?P<n>[^/]+)_COLMAP/(?P<v>[vV]\d+)/images/(?P=n)_(?P=v)_$")
 
 
-def _fco_sync_render_version(filepath):
+def _gcapture_sync_render_version(filepath):
     """Setzt einen vom Addon verwalteten Renderpfad auf Name und Version der
     Datei (v119). Rueckgabe: Anzahl geaenderter Szenen."""
     stem = os.path.splitext(os.path.basename(filepath or ""))[0]
     name, vtag = _exp_split_name_version(stem)
     if not vtag:
         return 0
-    name = _fco_clean_name(name)
+    name = _gcapture_clean_name(name)
     changed = 0
     for scene in bpy.data.scenes:
         rp = scene.render.filepath.replace("\\", "/")
-        m = _FCO_MANAGED_RX.match(rp)
+        m = _GCAPTURE_MANAGED_RX.match(rp)
         if not m or (m.group("n"), m.group("v")) == (name, vtag):
             continue
-        scene.render.filepath = _fco_managed_render_path(name, vtag)
+        scene.render.filepath = _gcapture_managed_render_path(name, vtag)
         changed += 1
-        print("[Gaussian Render Scan] render output follows %s: %s"
+        print("[Gaussian Render Capture] render output follows %s: %s"
               % (os.path.basename(filepath), scene.render.filepath))
     return changed
 
 
-_FCO_OUT_RX = re.compile(r"^//[^/]+_COLMAP/[vV]\d+/?$")
+_GCAPTURE_OUT_RX = re.compile(r"^//[^/]+_COLMAP/[vV]\d+/?$")
 
 
-def _fco_render_path_is_default_or_managed(scene):
+def _gcapture_render_path_is_default_or_managed(scene):
     """True, wenn der Renderpfad Blenders Standard ist oder vom Addon
     verwaltet wird -- dann darf Save Scene Version ihn setzen (v129)."""
     rp = (scene.render.filepath or "").replace("\\", "/").strip()
     return (rp in ("", "/tmp", "/tmp/", "//")
-            or bool(_FCO_MANAGED_RX.match(rp)))
+            or bool(_GCAPTURE_MANAGED_RX.match(rp)))
 
 
-def _fco_auto_output_dir(filepath):
+def _gcapture_auto_output_dir(filepath):
     """//<Name>_COLMAP/<vNNN>/ fuer die Datei (wie _exp_resolve_output_dir)."""
     if not filepath:
         return ""
@@ -2790,7 +2790,7 @@ def _fco_auto_output_dir(filepath):
     return "//%s_COLMAP/%s/" % (name or "Scene", vtag or "v001")
 
 
-def _fco_auto_image_dir(scene):
+def _gcapture_auto_image_dir(scene):
     """Ordner des Renderpfads, wie er in der Szene steht (relativ bleibt
     relativ)."""
     rp = (scene.render.filepath or "").replace("\\", "/")
@@ -2799,21 +2799,21 @@ def _fco_auto_image_dir(scene):
     return rp if rp.endswith("/") else rp.rsplit("/", 1)[0] + "/"
 
 
-def _fco_sync_path_fields(scene, filepath):
+def _gcapture_sync_path_fields(scene, filepath):
     """Output Folder und Image Folder zeigen die tatsaechlichen Pfade und
     folgen Version und Renderpfad, solange sie den vom Addon eingetragenen
     Wert haben (v129). Ungespeicherte Szenen bleiben leer (= automatisch)."""
-    s = getattr(scene, "fco_settings", None)
+    s = getattr(scene, "gcapture_settings", None)
     if s is None or not filepath:
         return
-    out_auto = _fco_auto_output_dir(filepath)
+    out_auto = _gcapture_auto_output_dir(filepath)
     cur = (s.exp_output_dir or "").replace("\\", "/").strip()
-    if not cur or cur == s.exp_output_dir_auto or _FCO_OUT_RX.match(cur):
+    if not cur or cur == s.exp_output_dir_auto or _GCAPTURE_OUT_RX.match(cur):
         if s.exp_output_dir != out_auto:
             s.exp_output_dir = out_auto
         if s.exp_output_dir_auto != out_auto:
             s.exp_output_dir_auto = out_auto
-    img_auto = _fco_auto_image_dir(scene)
+    img_auto = _gcapture_auto_image_dir(scene)
     cur = (s.exp_image_dir or "").replace("\\", "/").strip()
     if img_auto and (not cur or cur == s.exp_image_dir_auto):
         if s.exp_image_dir != img_auto:
@@ -2822,46 +2822,114 @@ def _fco_sync_path_fields(scene, filepath):
             s.exp_image_dir_auto = img_auto
 
 
-def _fco_sync_all(filepath):
-    _fco_sync_render_version(filepath)
+def _gcapture_sync_all(filepath):
+    _gcapture_sync_render_version(filepath)
     for scene in bpy.data.scenes:
-        _fco_sync_path_fields(scene, filepath)
+        _gcapture_sync_path_fields(scene, filepath)
 
 
-_FCO_MSGBUS_OWNER = object()
+_GCAPTURE_MSGBUS_OWNER = object()
 
 
-def _fco_on_render_path_change(*args):
+def _gcapture_on_render_path_change(*args):
     for scene in bpy.data.scenes:
-        _fco_sync_path_fields(scene, bpy.data.filepath)
+        _gcapture_sync_path_fields(scene, bpy.data.filepath)
 
 
-def _fco_msgbus_subscribe():
+def _gcapture_msgbus_subscribe():
     """Aenderungen am Renderpfad sofort in Image Folder uebernehmen (v129).
     Muss nach jedem Laden neu abonniert werden."""
-    bpy.msgbus.clear_by_owner(_FCO_MSGBUS_OWNER)
+    bpy.msgbus.clear_by_owner(_GCAPTURE_MSGBUS_OWNER)
     bpy.msgbus.subscribe_rna(key=(bpy.types.RenderSettings, "filepath"),
-                             owner=_FCO_MSGBUS_OWNER, args=(),
-                             notify=_fco_on_render_path_change)
+                             owner=_GCAPTURE_MSGBUS_OWNER, args=(),
+                             notify=_gcapture_on_render_path_change)
+
+
+# Uebernahme aus "Gaussian Render Scan" (bis 1.0.2, 23.09.2026): dieselben
+# Einstellungen und Markierungen unter dem neuen Namen. Laeuft nach jedem
+# Laden und beim Aktivieren; ohne Altdaten aendert sie nichts.
+_GCAPTURE_LEGACY_KEYS = (("gscan_prepared", "gcapture_prepared"),
+                         ("gscan_res_ok", "gcapture_res_ok"),
+                         ("gscan_base_loc", "gcapture_base_loc"),
+                         ("gscan_center", "gcapture_center"))
+_GCAPTURE_LEGACY_ATTRS = ("fit", "shift", "adj", "adj_pos", "adj_tgt")
+_GCAPTURE_LEGACY_NAMES = (("GScan_Group", "GCapture_Group", "objects"),
+                          ("Scan_Rig", "Capture_Rig", "collections"))
+
+
+def _gcapture_migrate_legacy():
+    """Szenen aus Gaussian Render Scan uebernehmen. Die Einstellungen liegen
+    ab Blender 5.0 in den System-Properties, davor im Dict der Szene.
+    Rueckgabe: Anzahl uebernommener Eintraege."""
+    n = 0
+    for scene in bpy.data.scenes:
+        sysp = getattr(scene, "bl_system_properties_get", None)
+        g = sysp() if sysp else None
+        dst = g if g is not None else scene
+        for store in (g, scene):
+            if store is None or "fco_settings" not in store:
+                continue
+            old = store["fco_settings"]
+            if "gcapture_settings" not in dst and hasattr(old, "to_dict"):
+                dst["gcapture_settings"] = old.to_dict()
+                n += 1
+            del store["fco_settings"]
+    for data in (bpy.data.scenes, bpy.data.objects):
+        for idb in data:
+            for a, b in _GCAPTURE_LEGACY_KEYS:
+                if a in idb:
+                    if b not in idb:
+                        idb[b] = idb[a]
+                    del idb[a]
+                    n += 1
+    for me in bpy.data.meshes:
+        for suffix in _GCAPTURE_LEGACY_ATTRS:
+            attr = me.attributes.get("gscan_" + suffix)
+            if attr is not None and me.attributes.get("gcapture_" + suffix) is None:
+                attr.name = "gcapture_" + suffix
+                n += 1
+    # Objekt- und Collection-Namen nur, wenn die Datei vom alten Add-on stammt.
+    if n:
+        for a, b, kind in _GCAPTURE_LEGACY_NAMES:
+            data = getattr(bpy.data, kind)
+            idb = data.get(a)
+            if idb is not None and data.get(b) is None:
+                idb.name = b
+                n += 1
+        print("[Gaussian Render Capture] scene of Gaussian Render Scan taken "
+              "over (%d entries)" % n)
+    return n
+
+
+def _gcapture_migrate_timer():
+    try:
+        _gcapture_migrate_legacy()
+    except Exception as exc:
+        print("[Gaussian Render Capture] migration:", exc)
+    return None
 
 
 @persistent
-def _fco_on_load_post(*args):
-    _fco_sync_all(bpy.data.filepath)
-    _fco_msgbus_subscribe()
+def _gcapture_on_load_post(*args):
+    try:
+        _gcapture_migrate_legacy()
+    except Exception as exc:
+        print("[Gaussian Render Capture] migration:", exc)
+    _gcapture_sync_all(bpy.data.filepath)
+    _gcapture_msgbus_subscribe()
 
 
 @persistent
-def _fco_on_save_pre(*args):
+def _gcapture_on_save_pre(*args):
     # Blender uebergibt den Zielpfad (Save As); sonst der aktuelle.
     target = next((a for a in args if isinstance(a, str) and a), bpy.data.filepath)
-    _fco_sync_all(target)
+    _gcapture_sync_all(target)
 
 
 # Szene vorbereiten (v113): Werte aus der Vorlage des Nutzers (Setup.blend,
 # 23.09.2026). Pfad relativ zur Szene -> Wert. Was eine Blender-Version nicht
 # kennt, wird uebersprungen.
-_FCO_PREPARE_SETTINGS = (
+_GCAPTURE_PREPARE_SETTINGS = (
     ("render.engine", 'CYCLES'),
     ("cycles.samples", 1024),
     ("cycles.use_denoising", True),
@@ -2885,13 +2953,13 @@ _FCO_PREPARE_SETTINGS = (
 )
 
 # Reihenfolge der GPU-Backends: das erste mit einer GPU gewinnt.
-_FCO_GPU_TYPES = ('OPTIX', 'CUDA', 'HIP', 'METAL', 'ONEAPI')
+_GCAPTURE_GPU_TYPES = ('OPTIX', 'CUDA', 'HIP', 'METAL', 'ONEAPI')
 
 # Startobjekte der Blender-Standardszene: (Name, Typ).
-_FCO_START_OBJECTS = (("Cube", 'MESH'), ("Camera", 'CAMERA'), ("Light", 'LIGHT'))
+_GCAPTURE_START_OBJECTS = (("Cube", 'MESH'), ("Camera", 'CAMERA'), ("Light", 'LIGHT'))
 
 
-def _fco_setup_gpu():
+def _gcapture_setup_gpu():
     """Cycles-Einstellungen: bestes GPU-Backend waehlen, dessen GPUs an,
     CPU aus. Rueckgabe (Backend, [Geraetenamen]) oder (None, [])."""
     try:
@@ -2901,7 +2969,7 @@ def _fco_setup_gpu():
     # Kein refresh_devices(): das fragt alle Backends ab, und Blender 4.1
     # stuerzt mit aktuellen Intel-Treibern im oneAPI-Backend ab (sycl6.dll).
     # get_devices_for_type fragt nur das jeweilige Backend.
-    for dtype in _FCO_GPU_TYPES:
+    for dtype in _GCAPTURE_GPU_TYPES:
         try:
             devs = list(cp.get_devices_for_type(dtype))
         except Exception:
@@ -2919,7 +2987,7 @@ def _fco_setup_gpu():
     return None, []
 
 
-def _fco_start_object_unchanged(obj):
+def _gcapture_start_object_unchanged(obj):
     """Nur das unveraenderte Startobjekt: Cube mit 8 Vertices, Kamera und
     Licht an ihrer Startposition."""
     if obj.parent is not None or obj.children:
@@ -2933,41 +3001,41 @@ def _fco_start_object_unchanged(obj):
             and (obj.matrix_world.to_translation() - Vector(pos)).length < 1e-3)
 
 
-def _fco_scene_prepared(scene):
+def _gcapture_scene_prepared(scene):
     """Prepare Scene lief in dieser Szene und sie rendert noch mit Cycles
     (v138; vorher genuegte Cycles + GPU, was viele Startdateien schon sind)."""
-    return bool(scene.get("gscan_prepared")) and scene.render.engine == 'CYCLES'
+    return bool(scene.get("gcapture_prepared")) and scene.render.engine == 'CYCLES'
 
 
-class FCO_OT_confirm_resolution(Operator):
-    bl_idname = "fco.confirm_resolution"
+class GCAPTURE_OT_confirm_resolution(Operator):
+    bl_idname = "gcapture.confirm_resolution"
     bl_label = "Confirm Resolution"
-    bl_description = "Keep this render resolution for the scan images"
+    bl_description = "Keep this render resolution for the rendered images"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        context.scene["gscan_res_ok"] = True
-        s = context.scene.fco_settings
-        _fco_apply_render_setup(context.scene, s)
+        context.scene["gcapture_res_ok"] = True
+        s = context.scene.gcapture_settings
+        _gcapture_apply_render_setup(context.scene, s)
         self.report({'INFO'}, "Render resolution %d x %d" % (s.resolution,
                                                              s.resolution))
         return {'FINISHED'}
 
 
-class FCO_OT_prepare_scene(Operator):
-    bl_idname = "fco.prepare_scene"
+class GCAPTURE_OT_prepare_scene(Operator):
+    bl_idname = "gcapture.prepare_scene"
     bl_label = "Prepare Scene"
     bl_description = ("Render with Cycles on the GPU (sets the Cycles device "
-                      "in the Preferences), apply the scan render settings "
+                      "in the Preferences), apply the capture render settings "
                       "and remove Blender's unchanged start cube, camera and "
                       "light")
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         scene = context.scene
-        dtype, gpus = _fco_setup_gpu()
+        dtype, gpus = _gcapture_setup_gpu()
         skipped = []
-        for path, value in _FCO_PREPARE_SETTINGS:
+        for path, value in _GCAPTURE_PREPARE_SETTINGS:
             owner_path, _, attr = path.rpartition(".")
             owner = scene
             try:
@@ -2977,11 +3045,11 @@ class FCO_OT_prepare_scene(Operator):
             except (AttributeError, TypeError, ValueError):
                 skipped.append(path)
         scene.cycles.device = 'GPU' if dtype else 'CPU'
-        scene["gscan_prepared"] = True     # Schritt erledigt (v138)
+        scene["gcapture_prepared"] = True     # Schritt erledigt (v138)
         removed = []
-        for name, otype in _FCO_START_OBJECTS:
+        for name, otype in _GCAPTURE_START_OBJECTS:
             obj = bpy.data.objects.get(name)
-            if obj is None or obj.type != otype or not _fco_start_object_unchanged(obj):
+            if obj is None or obj.type != otype or not _gcapture_start_object_unchanged(obj):
                 continue
             data = obj.data
             bpy.data.objects.remove(obj, do_unlink=True)
@@ -2993,18 +3061,18 @@ class FCO_OT_prepare_scene(Operator):
             removed.append(name)
         msg = ("Cycles on the GPU (%s: %s)" % (dtype, ", ".join(gpus)) if dtype
                else "No GPU found - Cycles renders on the CPU")
-        msg += ", scan render settings applied"
+        msg += ", capture render settings applied"
         if removed:
             msg += ", removed %s" % ", ".join(removed)
         if skipped:
-            print("[Gaussian Render Scan] Prepare Scene skipped (not in this "
+            print("[Gaussian Render Capture] Prepare Scene skipped (not in this "
                   "Blender version): %s" % ", ".join(skipped))
         self.report({'INFO'} if dtype else {'WARNING'}, msg)
         return {'FINISHED'}
 
 
-class FCO_OT_selection_to_collection(Operator):
-    bl_idname = "fco.selection_to_collection"
+class GCAPTURE_OT_selection_to_collection(Operator):
+    bl_idname = "gcapture.selection_to_collection"
     bl_label = "Put Selection into Collection"
     bl_description = ("Move the selected objects (with their children) into a "
                       "collection and use it as look target. An existing "
@@ -3026,7 +3094,7 @@ class FCO_OT_selection_to_collection(Operator):
         return context.window_manager.invoke_props_dialog(self)
 
     def execute(self, context):
-        s = context.scene.fco_settings
+        s = context.scene.gcapture_settings
         skip = {s.sph_object, bpy.data.objects.get(s.camera_name)}
 
         def walk(o):
@@ -3060,12 +3128,12 @@ class FCO_OT_selection_to_collection(Operator):
             s.sph_coll_index = len(s.sph_target_colls) - 1
         self.report({'INFO'}, "Moved %d object(s) into %s '%s' (look target)."
                     % (len(objs), "existing" if existing else "new", coll.name))
-        _fco_frame_collections(context, [coll])
+        _gcapture_frame_collections(context, [coll])
         return {'FINISHED'}
 
 
-class FCO_OT_save_version(Operator):
-    bl_idname = "fco.save_version"
+class GCAPTURE_OT_save_version(Operator):
+    bl_idname = "gcapture.save_version"
     bl_label = "Save Scene Version"
     bl_description = ("Save the scene as <Name>_v001.blend, later as a new "
                       "version or over the current one. Points the render "
@@ -3114,7 +3182,7 @@ class FCO_OT_save_version(Operator):
         folder = os.path.dirname(cur)
         stem = os.path.splitext(os.path.basename(cur))[0]
         name, vtag = _exp_split_name_version(stem)
-        name = _fco_clean_name(name)
+        name = _gcapture_clean_name(name)
         if vtag and self.mode == 'OVERWRITE':
             return cur, name, vtag
         if self.mode == 'CUSTOM':
@@ -3123,7 +3191,7 @@ class FCO_OT_save_version(Operator):
             return (os.path.join(folder, "%s_%s.blend" % (name, ctag)),
                     name, ctag)
         width = max(3, len(vtag) - 1) if vtag else 3
-        path = _fco_next_version_path(folder, name, width)
+        path = _gcapture_next_version_path(folder, name, width)
         return path, name, _exp_split_name_version(
             os.path.splitext(os.path.basename(path))[0])[1]
 
@@ -3133,18 +3201,18 @@ class FCO_OT_save_version(Operator):
         cur = bpy.data.filepath
         stem = os.path.splitext(os.path.basename(cur))[0]
         name, vtag = _exp_split_name_version(stem)
-        nums = _fco_version_files(os.path.dirname(cur), _fco_clean_name(name))
+        nums = _gcapture_version_files(os.path.dirname(cur), _gcapture_clean_name(name))
         top = max(nums) if nums else 0
         latest = bool(vtag) and int(vtag[1:]) >= top
         return vtag, top, latest
 
     def invoke(self, context, event):
         if not bpy.data.filepath:
-            s = context.scene.fco_settings
+            s = context.scene.gcapture_settings
             first = next((it.coll.name for it in s.sph_target_colls if it.coll),
                          "Scene")
-            self.filepath = _fco_clean_name(first) + "_v001.blend"
-            self.render_into_dataset = _fco_render_path_is_default_or_managed(
+            self.filepath = _gcapture_clean_name(first) + "_v001.blend"
+            self.render_into_dataset = _gcapture_render_path_is_default_or_managed(
                 context.scene)
             context.window_manager.fileselect_add(self)
             return {'RUNNING_MODAL'}
@@ -3154,9 +3222,9 @@ class FCO_OT_save_version(Operator):
         # naechste freie Nummer (v120). Ohne Version -> <Name>_v001.
         self.mode = 'OVERWRITE' if self._versions()[2] else 'NEW'
         # Eigener Renderpfad bleibt, sofern nicht ausdruecklich gewuenscht (v129).
-        self.render_into_dataset = _fco_render_path_is_default_or_managed(
+        self.render_into_dataset = _gcapture_render_path_is_default_or_managed(
             context.scene)
-        nums = _fco_version_files(folder, _fco_clean_name(
+        nums = _gcapture_version_files(folder, _gcapture_clean_name(
             _exp_split_name_version(stem)[0]))
         self.custom_version = (max(nums) + 1) if nums else 1
         return context.window_manager.invoke_props_dialog(self, width=380)
@@ -3224,7 +3292,7 @@ class FCO_OT_save_version(Operator):
                 self.report({'ERROR'}, "No file name given.")
                 return {'CANCELLED'}
             folder = os.path.dirname(bpy.path.abspath(self.filepath))
-            name = _fco_clean_name(self.filepath)
+            name = _gcapture_clean_name(self.filepath)
             # Eingetippte Version (z. B. Porsche_v007) uebernehmen, wenn die
             # Datei noch nicht existiert -- sonst naechste freie Version.
             typed = _exp_split_name_version(os.path.splitext(
@@ -3239,13 +3307,13 @@ class FCO_OT_save_version(Operator):
                                 "free version instead" % os.path.basename(cand))
             if path is None:
                 width = max(3, len(typed) - 1) if typed else 3
-                path = _fco_next_version_path(folder, name, width)
+                path = _gcapture_next_version_path(folder, name, width)
             vtag = _exp_split_name_version(
                 os.path.splitext(os.path.basename(path))[0])[1]
         os.makedirs(os.path.dirname(path), exist_ok=True)
         if self.render_into_dataset:
-            scene.render.filepath = _fco_managed_render_path(name, vtag)
-            scene.fco_settings.exp_image_dir = ""
+            scene.render.filepath = _gcapture_managed_render_path(name, vtag)
+            scene.gcapture_settings.exp_image_dir = ""
         # relative_remap=False: der neue "//"-Renderpfad gilt schon relativ
         # zum Zielordner und darf nicht umgerechnet werden. Neue Versionen
         # liegen im selben Ordner, eine ungespeicherte Szene hat noch keine
@@ -3268,8 +3336,8 @@ class FCO_OT_save_version(Operator):
 # ----------------------------------------------------------------------
 # Inhalte der Abschnitte: von Unterpanels UND Guide-Karte genutzt (v89)
 # ----------------------------------------------------------------------
-def _fco_draw_camera(layout, context):
-    s = context.scene.fco_settings
+def _gcapture_draw_camera(layout, context):
+    s = context.scene.gcapture_settings
     obj = context.active_object
     sph = s.sph_object
     if s.use_guide_list and sph is not None and sph.name in context.scene.objects:
@@ -3301,35 +3369,35 @@ def _fco_draw_camera(layout, context):
             wbox.label(text="-> Choose 'Geometry Center'.")
 
 
-def _fco_draw_target(layout, context):
-    s = context.scene.fco_settings
+def _gcapture_draw_target(layout, context):
+    s = context.scene.gcapture_settings
     row = layout.row()
     row.enabled = bool(context.selected_objects)
-    _fco_action(row, "fco.selection_to_collection",
+    _gcapture_action(row, "gcapture.selection_to_collection",
                 not any(it.coll for it in s.sph_target_colls), 'COLLECTION_NEW')
     if not s.wt_active:
         layout.label(text="Which collection the cameras look at:")
     srow = layout.row()
-    srow.template_list("FCO_UL_colls", "fco_colls", s, "sph_target_colls",
+    srow.template_list("GCAPTURE_UL_colls", "gcapture_colls", s, "sph_target_colls",
                        s, "sph_coll_index", rows=3)
     scol = srow.column(align=True)
-    scol.operator("fco.coll_add", text="", icon='ADD')
-    scol.operator("fco.coll_remove", text="", icon='REMOVE')
-    scol.operator("fco.coll_clear", text="", icon='TRASH')
+    scol.operator("gcapture.coll_add", text="", icon='ADD')
+    scol.operator("gcapture.coll_remove", text="", icon='REMOVE')
+    scol.operator("gcapture.coll_clear", text="", icon='TRASH')
 
 
-def _fco_draw_group(layout, context):
-    s = context.scene.fco_settings
+def _gcapture_draw_group(layout, context):
+    s = context.scene.gcapture_settings
     if not s.wt_active:
         layout.label(text="Group models under an Empty, put them on Z=0:")
     layout.prop(s, "ga_fast_bbox")
     garow = layout.row()
     garow.scale_y = 1.2
-    garow.operator("fco.group_align", icon='EMPTY_AXIS')
+    garow.operator("gcapture.group_align", icon='EMPTY_AXIS')
 
 
-def _fco_draw_sphere(layout, context):
-    s = context.scene.fco_settings
+def _gcapture_draw_sphere(layout, context):
+    s = context.scene.gcapture_settings
     if not s.wt_active:
         layout.label(text="Where the cameras sit (auto-fit):")
     layout.prop(s, "sph_subdivisions")
@@ -3340,22 +3408,22 @@ def _fco_draw_sphere(layout, context):
     layout.prop(s, "sph_margin")
     layout.prop(s, "sph_upper_only")
     layout.prop(s, "sph_set_as_guide")
-    _fco_action(layout, "fco.make_sphere",
+    _gcapture_action(layout, "gcapture.make_sphere",
                 not (s.sph_object is not None
                      and s.sph_object.name in context.scene.objects),
                 'MESH_ICOSPHERE')
 
 
-def _fco_draw_build(layout, context):
-    s = context.scene.fco_settings
+def _gcapture_draw_build(layout, context):
+    s = context.scene.gcapture_settings
     if not s.wt_active:
         layout.label(text="One keyframe per sphere face:")
     brow = layout.row()
     brow.scale_y = 1.4
     # Waehrend Live Camera Lock aktiv: Build gesperrt (erst Finish).
     brow.enabled = not s.live_lock
-    _fco_action(brow, "fco.build_animation",
-                _fco_wt_status_build_poses(context, s)[0] != 'DONE',
+    _gcapture_action(brow, "gcapture.build_animation",
+                _gcapture_wt_status_build_poses(context, s)[0] != 'DONE',
                 'CON_CAMERASOLVER')
     if not s.live_lock and _sph_has_adjustments(s.sph_object):
         wrow = layout.row()
@@ -3371,7 +3439,7 @@ def _fco_draw_build(layout, context):
     # sofort das Skalieren der Sphere (v95).
     lbox = layout.box()
     if not s.live_lock:
-        lbox.operator("fco.lock_start", icon='CON_CAMERASOLVER')
+        lbox.operator("gcapture.lock_start", icon='CON_CAMERASOLVER')
     else:
         lbox.label(text="Live Camera Adjust active", icon='REC')
         hint = lbox.column(align=True)
@@ -3382,7 +3450,7 @@ def _fco_draw_build(layout, context):
         faces_total = sum(len(_guide_faces_with_targets(o))
                           for o in _collect_guide_objects(
                               context, context.active_object))
-        frozen = _FCO_LOCK_FROZEN_IDX
+        frozen = _GCAPTURE_LOCK_FROZEN_IDX
         if frozen is not None and 0 <= frozen < faces_total:
             lbox.label(text="Adjusting face %d / %d"
                        % (frozen, faces_total), icon='TRACKER')
@@ -3396,28 +3464,28 @@ def _fco_draw_build(layout, context):
         lbox.label(text="Finish - apply the adjustment to:")
         frow = lbox.row(align=True)
         frow.scale_y = 1.3
-        op = frow.operator("fco.lock_finish", text="This Camera",
+        op = frow.operator("gcapture.lock_finish", text="This Camera",
                            icon='CAMERA_DATA')
         op.apply_to = 'THIS'
-        op = frow.operator("fco.lock_finish", text="All Cameras",
+        op = frow.operator("gcapture.lock_finish", text="All Cameras",
                            icon='MESH_ICOSPHERE')
         op.apply_to = 'ALL'
         crow = lbox.row()
-        op = crow.operator("fco.lock_finish", text="Cancel", icon='X')
+        op = crow.operator("gcapture.lock_finish", text="Cancel", icon='X')
         op.apply_to = 'CANCEL'
 
 
-def _fco_draw_render(layout, context):
-    s = context.scene.fco_settings
+def _gcapture_draw_render(layout, context):
+    s = context.scene.gcapture_settings
     # Nur die Aufloesung; die immer noetigen Schalter stehen unter
     # Advanced > Render Setup (v129).
     rrow = layout.row(align=True)
     rrow.enabled = s.set_resolution
     # Zu Beginn einmal blau: bewusst bestaetigen oder aendern (v140).
-    if s.set_resolution and not context.scene.get("gscan_res_ok"):
+    if s.set_resolution and not context.scene.get("gcapture_res_ok"):
         split = rrow.split(factor=0.8, align=True)
         split.prop(s, "resolution")
-        split.operator("fco.confirm_resolution", text="OK", depress=True)
+        split.operator("gcapture.confirm_resolution", text="OK", depress=True)
     else:
         rrow.prop(s, "resolution")
 
@@ -3438,14 +3506,14 @@ def _fco_draw_render(layout, context):
     else:
         box.label(text="Render output: %s" % context.scene.render.filepath,
                   icon='OUTPUT')
-    _fco_action(box, "fco.save_version", not bpy.data.filepath, 'FILE_TICK')
+    _gcapture_action(box, "gcapture.save_version", not bpy.data.filepath, 'FILE_TICK')
     if not s.wt_active:
         layout.label(text="Then render the animation (Render > Render Animation).",
                      icon='RENDER_ANIMATION')
 
 
-def _fco_draw_export(layout, context):
-    s = context.scene.fco_settings
+def _gcapture_draw_export(layout, context):
+    s = context.scene.gcapture_settings
     ecol = layout.column(align=True)
     # Bezeichnung ueber dem Feld: in der schmalen Seitenleiste wurde sie
     # sonst abgeschnitten, und der Pfad bekommt die volle Breite (v129).
@@ -3453,7 +3521,7 @@ def _fco_draw_export(layout, context):
     orow = ecol.row(align=True)
     orow.prop(s, "exp_output_dir", text="")
     if (s.exp_output_dir or "").strip() and not s.exp_output_dir.startswith("//"):
-        op = orow.operator("fco.path_relative", text="", icon='DOT')
+        op = orow.operator("gcapture.path_relative", text="", icon='DOT')
         op.prop = "exp_output_dir"
     if not (s.exp_output_dir or "").strip():
         try:
@@ -3467,7 +3535,7 @@ def _fco_draw_export(layout, context):
     irow = ecol.row(align=True)
     irow.prop(s, "exp_image_dir", text="")
     if (s.exp_image_dir or "").strip() and not s.exp_image_dir.startswith("//"):
-        op = irow.operator("fco.path_relative", text="", icon='DOT')
+        op = irow.operator("gcapture.path_relative", text="", icon='DOT')
         op.prop = "exp_image_dir"
     ecol.label(text="Point Source:")
     ecol.prop(s, "exp_point_source", text="")
@@ -3579,7 +3647,7 @@ def _fco_draw_export(layout, context):
             rrow.label(text="No stored point cloud yet", icon='INFO')
     erow2 = layout.row()
     erow2.scale_y = 1.3
-    _fco_action(erow2, "fco.export_colmap",
+    _gcapture_action(erow2, "gcapture.export_colmap",
                 not _exp_output_has_export(_exp_resolve_output_dir(s)), 'EXPORT')
     if s.exp_last_points:
         rcol = layout.column(align=True)
@@ -3594,55 +3662,55 @@ def _fco_draw_export(layout, context):
 # ----------------------------------------------------------------------
 # Blender erlaubt Addons nicht, Panels auf-/zuzuklappen. Darum blendet der
 # Guide die Unterpanels aus (poll) und zeigt im Hauptpanel eine Karte mit
-# Erklaerung, den Bedienelementen des Schritts (dieselben _fco_draw_*-
+# Erklaerung, den Bedienelementen des Schritts (dieselben _gcapture_draw_*-
 # Funktionen wie die Unterpanels) und einer Statusanzeige.
-import textwrap as _fco_textwrap
+import textwrap as _gcapture_textwrap
 
 
-def _fco_wt_status_camera(context, s):
-    if _fco_scene_prepared(context.scene):
+def _gcapture_wt_status_camera(context, s):
+    if _gcapture_scene_prepared(context.scene):
         return 'DONE', "Scene prepared (Cycles on GPU)"
     return 'TODO', "Scene not prepared yet"
 
 
-def _fco_draw_intro(layout, context):
+def _gcapture_draw_intro(layout, context):
     row = layout.row()
     row.scale_y = 1.2
-    _fco_action(row, "fco.prepare_scene",
-                not _fco_scene_prepared(context.scene), 'SCENE_DATA')
+    _gcapture_action(row, "gcapture.prepare_scene",
+                not _gcapture_scene_prepared(context.scene), 'SCENE_DATA')
     layout.separator(factor=0.5)
-    _fco_draw_camera(layout, context)
+    _gcapture_draw_camera(layout, context)
 
 
-def _fco_wt_status_target(context, s):
+def _gcapture_wt_status_target(context, s):
     names = [it.coll.name for it in s.sph_target_colls if it.coll]
     if names:
         return 'DONE', "Target: %s" % ", ".join(names)
     return 'TODO', "No collection added yet"
 
 
-def _fco_wt_status_group(context, s):
-    if bpy.data.objects.get(FCO_OT_group_align.EMPTY_NAME) is not None:
-        return 'DONE', "Grouped under '%s'" % FCO_OT_group_align.EMPTY_NAME
+def _gcapture_wt_status_group(context, s):
+    if bpy.data.objects.get(GCAPTURE_OT_group_align.EMPTY_NAME) is not None:
+        return 'DONE', "Grouped under '%s'" % GCAPTURE_OT_group_align.EMPTY_NAME
     return 'OPTIONAL', "Not grouped yet (optional)"
 
 
-def _fco_wt_status_sphere(context, s):
+def _gcapture_wt_status_sphere(context, s):
     sph = s.sph_object
     if sph is not None and sph.name in context.scene.objects:
         return 'DONE', "%s: %d cameras" % (sph.name, len(sph.data.polygons))
     return 'TODO', "No camera sphere yet"
 
 
-def _fco_wt_status_build(context, s):
+def _gcapture_wt_status_build(context, s):
     if not bpy.data.filepath:
         cam = bpy.data.objects.get(s.camera_name)
         if cam is not None and iter_action_fcurves(cam):
             return 'TODO', "Built - now save the scene (Save Scene Version)"
-    return _fco_wt_status_build_poses(context, s)
+    return _gcapture_wt_status_build_poses(context, s)
 
 
-def _fco_wt_status_build_poses(context, s):
+def _gcapture_wt_status_build_poses(context, s):
     cam = bpy.data.objects.get(s.camera_name)
     fcs = iter_action_fcurves(cam) if cam is not None else []
     frames = set()
@@ -3655,7 +3723,7 @@ def _fco_wt_status_build_poses(context, s):
     return 'TODO', "No camera animation yet"
 
 
-def _fco_wt_status_render(context, s):
+def _gcapture_wt_status_render(context, s):
     scene = context.scene
     expected = scene.frame_end - scene.frame_start + 1
     folder = _exp_resolve_image_dir(s)
@@ -3670,7 +3738,7 @@ def _fco_wt_status_render(context, s):
     return 'MISSING', "No rendered images found in '%s'" % short
 
 
-def _fco_wt_status_export(context, s):
+def _gcapture_wt_status_export(context, s):
     out_dir = os.path.normpath(_exp_resolve_output_dir(s))
     tail = os.path.join(os.path.basename(os.path.dirname(out_dir)),
                         os.path.basename(out_dir))
@@ -3679,24 +3747,24 @@ def _fco_wt_status_export(context, s):
     return 'TODO', "Not exported yet (%s)" % os.path.basename(out_dir)
 
 
-_FCO_WT_STEPS = [
-    dict(title="1. Scene & Camera", badge='fco_cam', icon='CAMERA_DATA',
-         draw=_fco_draw_intro, status=_fco_wt_status_camera,
+_GCAPTURE_WT_STEPS = [
+    dict(title="1. Scene & Camera", badge='gcapture_cam', icon='CAMERA_DATA',
+         draw=_gcapture_draw_intro, status=_gcapture_wt_status_camera,
          goal="This guide turns your model into a Gaussian Splatting "
               "dataset: cameras on a sphere around the model, one rendered "
               "image per camera, then a COLMAP export for Postshot or "
               "LichtFeld Studio.",
          steps=["Press Prepare Scene: Cycles renders on your GPU with the "
-                "scan render settings; Blender's start cube, camera and "
+                "capture render settings; Blender's start cube, camera and "
                 "light are removed.",
                 "Import your model and put it into its own collection.",
-                "Set the Focal Length of the scan camera - 50 mm is a good "
+                "Set the Focal Length of the capture camera - 50 mm is a good "
                 "default; the sphere adapts its size to the lens.",
                 "Keep Look Target at Geometry Center."],
          check="",
          note=["The camera itself is created in step 5 (Build)."]),
-    dict(title="2. Look Target (Collection)", badge='fco_1', icon='HIDE_OFF',
-         draw=_fco_draw_target, status=_fco_wt_status_target,
+    dict(title="2. Look Target (Collection)", badge='gcapture_1', icon='HIDE_OFF',
+         draw=_gcapture_draw_target, status=_gcapture_wt_status_target,
          goal="Tells the add-on which collection holds your model: the "
               "cameras look at it, and the sphere is sized to fit it.",
          steps=["Model in its own collection: select it in the Outliner and "
@@ -3706,8 +3774,8 @@ _FCO_WT_STEPS = [
                 "the list."],
          check="the collection appears in the list.",
          note=[]),
-    dict(title="3. Group & Align to Ground", badge='fco_2', icon='EMPTY_AXIS',
-         draw=_fco_draw_group, status=_fco_wt_status_group,
+    dict(title="3. Group & Align to Ground", badge='gcapture_2', icon='EMPTY_AXIS',
+         draw=_gcapture_draw_group, status=_gcapture_wt_status_group,
          goal="Only for objects that stand on a ground: places the model "
               "at the world origin, standing on Z = 0, so the sphere is "
               "centred and the dataset upright.",
@@ -3717,8 +3785,8 @@ _FCO_WT_STEPS = [
          note=["Floating object without a ground, or model already in "
                "place: skip with Next.",
                "A floating object gets the full sphere in the next step."]),
-    dict(title="4. Camera Sphere", badge='fco_3', icon='MESH_ICOSPHERE',
-         draw=_fco_draw_sphere, status=_fco_wt_status_sphere,
+    dict(title="4. Camera Sphere", badge='gcapture_3', icon='MESH_ICOSPHERE',
+         draw=_gcapture_draw_sphere, status=_gcapture_wt_status_sphere,
          goal="The cameras sit on the faces of an ico-sphere around the "
               "model - one camera per face.",
          steps=["Choose Subdivisions: 1 = 20, 2 = 80, 3 = 320, 4 = 1280 "
@@ -3737,8 +3805,8 @@ _FCO_WT_STEPS = [
                "image.",
                "Create / Update fits the sphere anew and discards Live "
                "Camera Adjust changes."]),
-    dict(title="5. Build Camera Animation", badge='fco_4', icon='KEYFRAME_HLT',
-         draw=_fco_draw_build, status=_fco_wt_status_build,
+    dict(title="5. Build Camera Animation", badge='gcapture_4', icon='KEYFRAME_HLT',
+         draw=_gcapture_draw_build, status=_gcapture_wt_status_build,
          goal="Puts one camera keyframe on every sphere face - one frame "
               "per viewpoint.",
          steps=["Press Build Camera Animation.",
@@ -3756,9 +3824,9 @@ _FCO_WT_STEPS = [
                "undoes it.",
                "Build Camera Animation starts again from step 4 and discards "
                "all adjustments (it warns first)."]),
-    dict(title="6. Render Settings & Output", badge='fco_5',
+    dict(title="6. Render Settings & Output", badge='gcapture_5',
          icon='RENDER_ANIMATION',
-         draw=_fco_draw_render, status=_fco_wt_status_render,
+         draw=_gcapture_draw_render, status=_gcapture_wt_status_render,
          props_tab='OUTPUT',
          goal="Build has set the frame range, resolution and active camera; "
               "saving the version has pointed the render output into the "
@@ -3771,8 +3839,8 @@ _FCO_WT_STEPS = [
                 "or on a render farm."],
          check="the status line shows all images found.",
          note=["A change of the resolution applies at once."]),
-    dict(title="7. COLMAP Export", badge='fco_6', icon='EXPORT',
-         draw=_fco_draw_export, status=_fco_wt_status_export,
+    dict(title="7. COLMAP Export", badge='gcapture_6', icon='EXPORT',
+         draw=_gcapture_draw_export, status=_gcapture_wt_status_export,
          goal="Writes the cameras, their poses and a start point cloud into "
               "the dataset folder next to the images.",
          steps=["Keep Use Vertex Count on: every vertex of the model becomes "
@@ -3787,12 +3855,12 @@ _FCO_WT_STEPS = [
                "structure."]),
 ]
 
-_FCO_WT_STATUS_ICON = {'DONE': 'CHECKMARK', 'TODO': 'ERROR',
+_GCAPTURE_WT_STATUS_ICON = {'DONE': 'CHECKMARK', 'TODO': 'ERROR',
                        'MISSING': 'ERROR',
                        'OPTIONAL': 'RADIOBUT_OFF', 'INFO': 'INFO'}
 
 
-def _fco_wrap(layout, context, text, indent_px=0):
+def _gcapture_wrap(layout, context, text, indent_px=0):
     """Blender bricht Labels nicht um: Text nach Panelbreite umbrechen.
     indent_px: Breite, die links schon belegt ist (Nummer der Anleitung)."""
     width = context.region.width if context.region else 300
@@ -3804,14 +3872,14 @@ def _fco_wrap(layout, context, text, indent_px=0):
     chars = max(20, int((width - 40 - indent_px * scale) / (6.2 * scale)))
     col = layout.column(align=True)
     col.scale_y = 0.85
-    for line in _fco_textwrap.wrap(text, chars):
+    for line in _gcapture_textwrap.wrap(text, chars):
         col.label(text=line)
 
 
-def _fco_wt_draw_text(layout, context, step):
+def _gcapture_wt_draw_text(layout, context, step):
     """Guide-Text (v112): Zweck, nummerierte Schritte mit haengendem
     Einzug, Check und Hinweis."""
-    _fco_wrap(layout, context, step['goal'])
+    _gcapture_wrap(layout, context, step['goal'])
     if step['steps']:
         layout.separator(factor=0.5)
         scol = layout.column(align=True)
@@ -3821,7 +3889,7 @@ def _fco_wt_draw_text(layout, context, step):
             num.ui_units_x = 1.0
             num.scale_y = 0.85
             num.label(text="%d." % i)
-            _fco_wrap(row.column(align=True), context, line, indent_px=34)
+            _gcapture_wrap(row.column(align=True), context, line, indent_px=34)
     # Check und Hinweise als Aufzaehlung (v131).
     note = step['note']
     bullets = ((["Check: " + step['check']] if step['check'] else [])
@@ -3835,39 +3903,39 @@ def _fco_wt_draw_text(layout, context, step):
             dot.ui_units_x = 1.0
             dot.scale_y = 0.85
             dot.label(text="•")
-            _fco_wrap(row.column(align=True), context, line, indent_px=34)
+            _gcapture_wrap(row.column(align=True), context, line, indent_px=34)
 
 
-def _fco_action(layout, op_id, pending, icon, text=None):
+def _gcapture_action(layout, op_id, pending, icon, text=None):
     """Knopf eines Pflichtschritts: blau (gedrueckt), solange der Schritt
     offen ist, danach neutral (v137)."""
     kw = {} if text is None else {"text": text}
     return layout.operator(op_id, icon=icon, depress=bool(pending), **kw)
 
 
-def _fco_badge_label(layout, badge, fallback_icon):
-    pv = _fco_previews.get(badge) if (badge and _fco_previews) else None
+def _gcapture_badge_label(layout, badge, fallback_icon):
+    pv = _gcapture_previews.get(badge) if (badge and _gcapture_previews) else None
     if pv is not None:
         layout.label(text="", icon_value=pv.icon_id)
     elif fallback_icon:
         layout.label(text="", icon=fallback_icon)
 
 
-def _fco_draw_walkthrough(layout, context):
-    s = context.scene.fco_settings
-    n = len(_FCO_WT_STEPS)
+def _gcapture_draw_walkthrough(layout, context):
+    s = context.scene.gcapture_settings
+    n = len(_GCAPTURE_WT_STEPS)
     idx = max(0, min(s.wt_step, n - 1))
-    step = _FCO_WT_STEPS[idx]
+    step = _GCAPTURE_WT_STEPS[idx]
 
     card = layout.box()
     head = card.row(align=True)
-    _fco_badge_label(head, step['badge'], None)
+    _gcapture_badge_label(head, step['badge'], None)
     head.label(text=step['title'], icon=step['icon'])
     right = head.row()
     right.alignment = 'RIGHT'
     right.label(text="Step %d of %d" % (idx + 1, n))
 
-    _fco_wt_draw_text(card, context, step)
+    _gcapture_wt_draw_text(card, context, step)
     card.separator()
     step['draw'](card.column(), context)
     card.separator()
@@ -3878,54 +3946,54 @@ def _fco_draw_walkthrough(layout, context):
         state, msg = 'INFO', "Status unavailable (%s)" % exc
     srow = card.row()
     srow.alert = state in {'TODO', 'MISSING'}   # Offenes rot (v124/v125)
-    srow.label(text=msg, icon=_FCO_WT_STATUS_ICON.get(state, 'INFO'))
+    srow.label(text=msg, icon=_GCAPTURE_WT_STATUS_ICON.get(state, 'INFO'))
 
     nav = card.row(align=True)
     nav.scale_y = 1.3
     back = nav.row(align=True)
     back.enabled = idx > 0
-    op = back.operator("fco.walkthrough_nav", text="Back", icon='TRIA_LEFT')
+    op = back.operator("gcapture.walkthrough_nav", text="Back", icon='TRIA_LEFT')
     op.delta = -1
-    nav.operator("fco.walkthrough_exit", text="Exit", icon='X')
+    nav.operator("gcapture.walkthrough_exit", text="Exit", icon='X')
     # Voraussetzungen erfuellt -> Next blau (v139).
     ready = state in {'DONE', 'OPTIONAL'}
     if idx < n - 1:
-        op = nav.operator("fco.walkthrough_nav", text="Next", icon='TRIA_RIGHT',
+        op = nav.operator("gcapture.walkthrough_nav", text="Next", icon='TRIA_RIGHT',
                           depress=ready)
         op.delta = 1
     else:
-        nav.operator("fco.walkthrough_exit", text="Finish", icon='CHECKMARK',
+        nav.operator("gcapture.walkthrough_exit", text="Finish", icon='CHECKMARK',
                      depress=ready)
 
 
-class FCO_OT_walkthrough_start(Operator):
-    bl_idname = "fco.walkthrough_start"
+class GCAPTURE_OT_walkthrough_start(Operator):
+    bl_idname = "gcapture.walkthrough_start"
     bl_label = "Start Guide"
     bl_description = ("Step-by-step guide through the whole workflow, with an "
                       "explanation for every step. Can be restarted any time")
 
     def execute(self, context):
-        s = context.scene.fco_settings
+        s = context.scene.gcapture_settings
         s.wt_step = 0
         s.wt_active = True
         return {'FINISHED'}
 
 
-class FCO_OT_walkthrough_nav(Operator):
-    bl_idname = "fco.walkthrough_nav"
+class GCAPTURE_OT_walkthrough_nav(Operator):
+    bl_idname = "gcapture.walkthrough_nav"
     bl_label = "Guide Step"
     bl_description = "Go to the previous or next step of the guide"
 
     delta: IntProperty(default=1)
 
     def execute(self, context):
-        s = context.scene.fco_settings
-        s.wt_step = max(0, min(s.wt_step + self.delta, len(_FCO_WT_STEPS) - 1))
-        _fco_wt_show_props_tab(context, _FCO_WT_STEPS[s.wt_step].get('props_tab'))
+        s = context.scene.gcapture_settings
+        s.wt_step = max(0, min(s.wt_step + self.delta, len(_GCAPTURE_WT_STEPS) - 1))
+        _gcapture_wt_show_props_tab(context, _GCAPTURE_WT_STEPS[s.wt_step].get('props_tab'))
         return {'FINISHED'}
 
 
-def _fco_wt_show_props_tab(context, tab):
+def _gcapture_wt_show_props_tab(context, tab):
     """Schaltet die Properties-Editoren des Fensters auf den Reiter des
     Guide-Schritts (v124: Schritt 5 -> Output, dort steht der Ausgabepfad)."""
     if not tab or context.window is None:
@@ -3938,193 +4006,193 @@ def _fco_wt_show_props_tab(context, tab):
                 pass
 
 
-class FCO_OT_walkthrough_exit(Operator):
-    bl_idname = "fco.walkthrough_exit"
+class GCAPTURE_OT_walkthrough_exit(Operator):
+    bl_idname = "gcapture.walkthrough_exit"
     bl_label = "Exit Guide"
     bl_description = "Close the guide and show the normal sections again"
 
     def execute(self, context):
-        context.scene.fco_settings.wt_active = False
+        context.scene.gcapture_settings.wt_active = False
         return {'FINISHED'}
 
 
-class FCO_PT_panel(Panel):
+class GCAPTURE_PT_panel(Panel):
     """Hauptpanel. Die Abschnitte sind Unterpanels (v85) -- einklappbar,
     mit Phasenfarbe im Kopf. bl_idname bleibt unveraendert."""
-    bl_label = "Gaussian Render Scan"
-    bl_idname = "FCO_PT_panel"
+    bl_label = "Gaussian Render Capture"
+    bl_idname = "GCAPTURE_PT_panel"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = "Gaussian Render Scan"
+    bl_category = "Gaussian Render Capture"
 
     def draw(self, context):
         layout = self.layout
-        s = context.scene.fco_settings
+        s = context.scene.gcapture_settings
         if s.wt_active:
-            _fco_draw_walkthrough(layout, context)
+            _gcapture_draw_walkthrough(layout, context)
             return
         row = layout.row()
         row.scale_y = 1.4
-        row.operator("fco.walkthrough_start", icon='HELP')
-        _fco_action(layout, "fco.prepare_scene",
-                    not _fco_scene_prepared(context.scene), 'SCENE_DATA')
+        row.operator("gcapture.walkthrough_start", icon='HELP')
+        _gcapture_action(layout, "gcapture.prepare_scene",
+                    not _gcapture_scene_prepared(context.scene), 'SCENE_DATA')
         col = layout.column(align=True)
         col.scale_y = 0.9
         col.label(text="First (in Blender): import your model", icon='INFO')
         col.label(text="and put it into its own Collection.")
 
 
-class _FCO_SubPanel:
+class _GCAPTURE_SubPanel:
     """Gemeinsame Basis der Unterpanels: Kopf mit farbigem Phasen-Icon
     und Schritt-Symbol."""
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = "Gaussian Render Scan"
-    bl_parent_id = "FCO_PT_panel"
+    bl_category = "Gaussian Render Capture"
+    bl_parent_id = "GCAPTURE_PT_panel"
     # Initial zugeklappt: der Nutzer klickt sich durch die Schritte (v89).
     bl_options = {'DEFAULT_CLOSED'}
-    fco_color = None     # Rueckfall, falls die Plaketten fehlen
-    fco_badge = None     # Name in _FCO_BADGES (farbige Nummern-Plakette)
-    fco_icon = None
+    gcapture_color = None     # Rueckfall, falls die Plaketten fehlen
+    gcapture_badge = None     # Name in _GCAPTURE_BADGES (farbige Nummern-Plakette)
+    gcapture_icon = None
 
     @classmethod
     def poll(cls, context):
         # Waehrend der Guide laeuft, zeigt das Hauptpanel nur die Guide-Karte.
-        return not context.scene.fco_settings.wt_active
+        return not context.scene.gcapture_settings.wt_active
 
     def draw_header(self, context):
         row = self.layout.row(align=True)
         badge = None
-        if self.fco_badge and _fco_previews is not None:
-            badge = _fco_previews.get(self.fco_badge)
+        if self.gcapture_badge and _gcapture_previews is not None:
+            badge = _gcapture_previews.get(self.gcapture_badge)
         if badge is not None:
             row.label(text="", icon_value=badge.icon_id)
-        elif self.fco_color:
-            row.label(text="", icon=self.fco_color)
-        if self.fco_icon:
-            row.label(text="", icon=self.fco_icon)
+        elif self.gcapture_color:
+            row.label(text="", icon=self.gcapture_color)
+        if self.gcapture_icon:
+            row.label(text="", icon=self.gcapture_icon)
 
 
-class FCO_PT_camera(_FCO_SubPanel, Panel):
-    bl_idname = "FCO_PT_camera"
-    fco_badge = 'fco_cam'
-    fco_icon = 'CAMERA_DATA'
+class GCAPTURE_PT_camera(_GCAPTURE_SubPanel, Panel):
+    bl_idname = "GCAPTURE_PT_camera"
+    gcapture_badge = 'gcapture_cam'
+    gcapture_icon = 'CAMERA_DATA'
     bl_label = "1. Scene & Camera"
     bl_order = 0
-    fco_color = _FCO_COLOR_PREP
+    gcapture_color = _GCAPTURE_COLOR_PREP
 
     def draw(self, context):
-        _fco_draw_camera(self.layout, context)
+        _gcapture_draw_camera(self.layout, context)
 
 
-class FCO_PT_target(_FCO_SubPanel, Panel):
-    bl_idname = "FCO_PT_target"
-    fco_badge = 'fco_1'
-    fco_icon = 'HIDE_OFF'
+class GCAPTURE_PT_target(_GCAPTURE_SubPanel, Panel):
+    bl_idname = "GCAPTURE_PT_target"
+    gcapture_badge = 'gcapture_1'
+    gcapture_icon = 'HIDE_OFF'
     bl_label = "2. Look Target (Collection)"
     bl_order = 1
-    fco_color = _FCO_COLOR_PREP
+    gcapture_color = _GCAPTURE_COLOR_PREP
 
     def draw(self, context):
-        _fco_draw_target(self.layout, context)
+        _gcapture_draw_target(self.layout, context)
 
 
-class FCO_PT_group(_FCO_SubPanel, Panel):
-    bl_idname = "FCO_PT_group"
-    fco_badge = 'fco_2'
-    fco_icon = 'EMPTY_AXIS'
+class GCAPTURE_PT_group(_GCAPTURE_SubPanel, Panel):
+    bl_idname = "GCAPTURE_PT_group"
+    gcapture_badge = 'gcapture_2'
+    gcapture_icon = 'EMPTY_AXIS'
     bl_label = "3. Group & Align to Ground"
     bl_order = 2
-    fco_color = _FCO_COLOR_PREP
+    gcapture_color = _GCAPTURE_COLOR_PREP
 
     def draw(self, context):
-        _fco_draw_group(self.layout, context)
+        _gcapture_draw_group(self.layout, context)
 
 
-class FCO_PT_sphere(_FCO_SubPanel, Panel):
-    bl_idname = "FCO_PT_sphere"
-    fco_badge = 'fco_3'
-    fco_icon = 'MESH_ICOSPHERE'
+class GCAPTURE_PT_sphere(_GCAPTURE_SubPanel, Panel):
+    bl_idname = "GCAPTURE_PT_sphere"
+    gcapture_badge = 'gcapture_3'
+    gcapture_icon = 'MESH_ICOSPHERE'
     bl_label = "4. Camera Sphere"
     bl_order = 3
-    fco_color = _FCO_COLOR_CAMERAS
+    gcapture_color = _GCAPTURE_COLOR_CAMERAS
 
     def draw(self, context):
-        _fco_draw_sphere(self.layout, context)
+        _gcapture_draw_sphere(self.layout, context)
 
 
-class FCO_PT_build(_FCO_SubPanel, Panel):
-    bl_idname = "FCO_PT_build"
-    fco_badge = 'fco_4'
-    fco_icon = 'KEYFRAME_HLT'
+class GCAPTURE_PT_build(_GCAPTURE_SubPanel, Panel):
+    bl_idname = "GCAPTURE_PT_build"
+    gcapture_badge = 'gcapture_4'
+    gcapture_icon = 'KEYFRAME_HLT'
     bl_label = "5. Build Camera Animation"
     bl_order = 4
-    fco_color = _FCO_COLOR_CAMERAS
+    gcapture_color = _GCAPTURE_COLOR_CAMERAS
 
     def draw(self, context):
-        _fco_draw_build(self.layout, context)
+        _gcapture_draw_build(self.layout, context)
 
 
-class FCO_PT_render(_FCO_SubPanel, Panel):
-    bl_idname = "FCO_PT_render"
-    fco_badge = 'fco_5'
-    fco_icon = 'RENDER_ANIMATION'
+class GCAPTURE_PT_render(_GCAPTURE_SubPanel, Panel):
+    bl_idname = "GCAPTURE_PT_render"
+    gcapture_badge = 'gcapture_5'
+    gcapture_icon = 'RENDER_ANIMATION'
     bl_label = "6. Render Settings & Output"
     bl_order = 5
-    fco_color = _FCO_COLOR_OUTPUT
+    gcapture_color = _GCAPTURE_COLOR_OUTPUT
 
     def draw(self, context):
-        _fco_draw_render(self.layout, context)
+        _gcapture_draw_render(self.layout, context)
 
 
-class FCO_PT_export(_FCO_SubPanel, Panel):
-    bl_idname = "FCO_PT_export"
-    fco_badge = 'fco_6'
-    fco_icon = 'EXPORT'
+class GCAPTURE_PT_export(_GCAPTURE_SubPanel, Panel):
+    bl_idname = "GCAPTURE_PT_export"
+    gcapture_badge = 'gcapture_6'
+    gcapture_icon = 'EXPORT'
     bl_label = "7. COLMAP Export (Postshot / LichtFeld)"
     bl_order = 6
-    fco_color = _FCO_COLOR_COLMAP
+    gcapture_color = _GCAPTURE_COLOR_COLMAP
 
     def draw(self, context):
-        _fco_draw_export(self.layout, context)
+        _gcapture_draw_export(self.layout, context)
 
 
-class FCO_PT_advanced(_FCO_SubPanel, Panel):
+class GCAPTURE_PT_advanced(_GCAPTURE_SubPanel, Panel):
     """Selten gebrauchte Optionen + Maintainer/Lizenz (zugeklappt)."""
-    bl_idname = "FCO_PT_advanced"
-    fco_icon = 'PREFERENCES'
+    bl_idname = "GCAPTURE_PT_advanced"
+    gcapture_icon = 'PREFERENCES'
     bl_label = "Advanced"
     bl_order = 7
     bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
         layout = self.layout
-        s = context.scene.fco_settings
+        s = context.scene.gcapture_settings
         # Eigene Kamera-Leitgitter statt/zusaetzlich zur Sphere (v93).
         glbox = layout.box()
         glbox.label(text="Custom Camera Guides", icon='MESH_ICOSPHERE')
         glbox.prop(s, "use_guide_list")
         if s.use_guide_list:
             row = glbox.row()
-            row.template_list("FCO_UL_guides", "fco_guides", s, "guides",
+            row.template_list("GCAPTURE_UL_guides", "gcapture_guides", s, "guides",
                               s, "guide_index", rows=3)
             bcol = row.column(align=True)
-            bcol.operator("fco.guide_add", text="", icon='ADD')
-            bcol.operator("fco.guide_remove", text="", icon='REMOVE')
-            bcol.operator("fco.guide_clear", text="", icon='TRASH')
+            bcol.operator("gcapture.guide_add", text="", icon='ADD')
+            bcol.operator("gcapture.guide_remove", text="", icon='REMOVE')
+            bcol.operator("gcapture.guide_clear", text="", icon='TRASH')
             total_objs = sum(len(it.objects) for it in s.guides)
             glbox.label(text="%d entr%s, %d object(s)"
                         % (len(s.guides),
                            "y" if len(s.guides) == 1 else "ies",
                            total_objs))
         # Interior-Test nur mit eigenen Leitgittern sinnvoll.
-        if _fco_has_custom_guides(s):
+        if _gcapture_has_custom_guides(s):
             glbox.prop(s, "skip_interior")
 
         # Render Setup (v129, vorher Schritt 5): wirken sofort und bei
-        # jedem Build; fuer einen Scan immer an.
+        # jedem Build; fuer ein Capture immer an.
         rbox = layout.box()
-        rbox.label(text="Render Setup (keep on for a scan)", icon='SCENE')
+        rbox.label(text="Render Setup (keep on for a capture)", icon='SCENE')
         rcol = rbox.column(align=True)
         rcol.prop(s, "constant_interp")
         rcol.prop(s, "set_active_camera")
@@ -4315,7 +4383,7 @@ def _exp_world_transform(s):
 
 
 def _exp_write_scale_info(out_dir, s, scale, mean_r, n_poses, n_points):
-    """Schreibt <vNNN>_gscan_export.json NEBEN den Datensatzordner (v126,
+    """Schreibt <vNNN>_gcapture_export.json NEBEN den Datensatzordner (v126,
     v145: nicht hinein -- Postshot liest jede .json im Datensatz als
     NeRF-Kameradatei und bricht ab). Massstab und
     Achsenumrechnung des Exports. Datensatz = scale * W @ Blender-Welt."""
@@ -4325,7 +4393,7 @@ def _exp_write_scale_info(out_dir, s, scale, mean_r, n_poses, n_points):
     fwd = Matrix.Diagonal((scale, scale, scale, 1.0)) @ W
     inv = fwd.inverted()
     info = {
-        "addon": "Gaussian Render Scan %s" % ".".join(
+        "addon": "Gaussian Render Capture %s" % ".".join(
             str(v) for v in bl_info["version"]),
         "blender": bpy.app.version_string,
         "created": datetime.datetime.now().isoformat(timespec="seconds"),
@@ -4349,8 +4417,13 @@ def _exp_write_scale_info(out_dir, s, scale, mean_r, n_poses, n_points):
     old = os.path.join(ds, "gscan_export.json")        # Ablage bis v144
     if os.path.isfile(old):
         os.remove(old)
-    target = os.path.join(os.path.dirname(ds),
+    # Gaussian Render Scan (bis 1.0.2) schrieb <vNNN>_gscan_export.json.
+    legacy = os.path.join(os.path.dirname(ds),
                           os.path.basename(ds) + "_gscan_export.json")
+    if os.path.isfile(legacy):
+        os.remove(legacy)
+    target = os.path.join(os.path.dirname(ds),
+                          os.path.basename(ds) + "_gcapture_export.json")
     with open(target, "w",
               encoding="utf-8") as f:
         json.dump(info, f, indent=2)
@@ -5321,8 +5394,8 @@ def _exp_same_dir(a, b):
             os.path.normcase(os.path.normpath(os.path.abspath(b))))
 
 
-class FCO_OT_path_relative(Operator):
-    bl_idname = "fco.path_relative"
+class GCAPTURE_OT_path_relative(Operator):
+    bl_idname = "gcapture.path_relative"
     bl_label = "Make Path Relative"
     bl_description = ("Store this folder relative to the .blend file (//...), "
                       "so the scene keeps working when the project is moved")
@@ -5335,7 +5408,7 @@ class FCO_OT_path_relative(Operator):
         return bool(bpy.data.filepath)
 
     def execute(self, context):
-        s = context.scene.fco_settings
+        s = context.scene.gcapture_settings
         raw = (getattr(s, self.prop, "") or "").strip()
         if not raw:
             self.report({'WARNING'}, "Folder is empty.")
@@ -5357,8 +5430,8 @@ class FCO_OT_path_relative(Operator):
         return {'FINISHED'}
 
 
-class FCO_OT_export_colmap(Operator):
-    bl_idname = "fco.export_colmap"
+class GCAPTURE_OT_export_colmap(Operator):
+    bl_idname = "gcapture.export_colmap"
     bl_label = "Export COLMAP (Postshot / LichtFeld)"
     bl_description = ("Exports cameras.txt / images.txt / points3D.txt plus "
                       "an images/ folder as a COLMAP model for Postshot and "
@@ -5375,7 +5448,7 @@ class FCO_OT_export_colmap(Operator):
     # ----- Setup (einmalig) -----
     def _setup(self, context):
         scene = context.scene
-        s = scene.fco_settings
+        s = scene.gcapture_settings
         cam = scene.camera
         if cam is None or cam.type != 'CAMERA':
             raise RuntimeError("No active scene camera set.")
@@ -5467,15 +5540,15 @@ class FCO_OT_export_colmap(Operator):
         # der zuletzt geschriebenen points3D.txt, wenn sich nichts geaendert
         # hat (z. B. nur ein Pfad).
         try:
-            faces = _fco_all_guide_faces(
+            faces = _gcapture_all_guide_faces(
                 context, None, guide_objs=_collect_guide_objects(
                     context, context.active_object))
-            views = [(tuple(f[0]), tuple(_fco_look_dir_for(s, *f)))
+            views = [(tuple(f[0]), tuple(_gcapture_look_dir_for(s, *f)))
                      for f in faces]
             self._sig = _exp_point_signature(scene, s, views, self._scale,
                                              self._W)
         except Exception as exc:
-            print("[Gaussian Render Scan] point signature failed:", exc)
+            print("[Gaussian Render Capture] point signature failed:", exc)
             self._sig = ""
 
         # Arbeitslisten.
@@ -5536,7 +5609,7 @@ class FCO_OT_export_colmap(Operator):
             self.report({'ERROR'}, "Nothing to export (no frames).")
             return {'CANCELLED'}
 
-        FCO_OT_export_colmap._is_running = True
+        GCAPTURE_OT_export_colmap._is_running = True
         wm = context.window_manager
         self._timer = wm.event_timer_add(0.05, window=context.window)
         wm.modal_handler_add(self)
@@ -5605,10 +5678,10 @@ class FCO_OT_export_colmap(Operator):
         reuse = False
         if s.exp_reuse_points and self._sig:
             if s.exp_last_signature != self._sig:
-                print("[Gaussian Render Scan] point cloud changed -> "
+                print("[Gaussian Render Capture] point cloud changed -> "
                       "recomputing")
             elif not prev or not os.path.isfile(prev):
-                print("[Gaussian Render Scan] no stored point cloud (%s) -> "
+                print("[Gaussian Render Capture] no stored point cloud (%s) -> "
                       "recomputing" % (prev or "none"))
             else:
                 reuse = True
@@ -5629,7 +5702,7 @@ class FCO_OT_export_colmap(Operator):
                                self._out_dir))
                 return {'FINISHED'}
             except Exception as exc:
-                print("[Gaussian Render Scan] could not reuse point cloud:",
+                print("[Gaussian Render Capture] could not reuse point cloud:",
                       exc)
 
         # --- Punkte sammeln (schnell) ---
@@ -5672,7 +5745,7 @@ class FCO_OT_export_colmap(Operator):
 
         # --- Filter-Phase modal starten oder direkt schreiben ---
         if want_filter and pts and world_main:
-            faces = _fco_all_guide_faces(bpy.context, None,
+            faces = _gcapture_all_guide_faces(bpy.context, None,
                                          guide_objs=guide_objs)
             self._flt_cams = [f[0] for f in faces]
             # GPU-Tiefenbilder (v105); ohne GPU-Kontext Ray-Cast wie bisher.
@@ -5681,7 +5754,7 @@ class FCO_OT_export_colmap(Operator):
                 try:
                     self._flt_gpu = _ExpGpuDepth(targets)
                     self._flt_views = [
-                        (f[0], _fco_look_dir_for(s, f[0], f[1], f[2], f[3]))
+                        (f[0], _gcapture_look_dir_for(s, f[0], f[1], f[2], f[3]))
                         for f in faces]
                     self._flt_fov = _sph_camera_min_fov(s, scene)
                     self._flt_np = np.array([tuple(p) for p in world_main],
@@ -5694,10 +5767,10 @@ class FCO_OT_export_colmap(Operator):
                         self._flt_gpu.compute_begin(self._flt_np)
                         self._flt_compute = True
                     except Exception as exc:
-                        print("[Gaussian Render Scan] GPU compute unavailable, "
+                        print("[Gaussian Render Capture] GPU compute unavailable, "
                               "checking points with numpy:", exc)
                 except Exception as exc:
-                    print("[Gaussian Render Scan] GPU visibility unavailable, "
+                    print("[Gaussian Render Capture] GPU visibility unavailable, "
                           "using ray casting:", exc)
                     self._flt_gpu = None
             self._flt_bvh = (None if self._flt_gpu is not None
@@ -5807,7 +5880,7 @@ class FCO_OT_export_colmap(Operator):
                                   getattr(self, "_mean_r", None),
                                   len(self._entries), len(pts))
         except OSError as exc:
-            self.report({'WARNING'}, "gscan_export.json not written: %s" % exc)
+            self.report({'WARNING'}, "<vNNN>_gcapture_export.json not written: %s" % exc)
         if getattr(self, "_sig", ""):
             s.exp_last_signature = self._sig
             s.exp_last_points_file = points_path
@@ -5869,78 +5942,80 @@ class FCO_OT_export_colmap(Operator):
             context.scene.frame_set(self._orig_frame)
         except Exception:
             pass
-        FCO_OT_export_colmap._is_running = False
+        GCAPTURE_OT_export_colmap._is_running = False
 
 
 # ----------------------------------------------------------------------
 # Registrierung
 # ----------------------------------------------------------------------
 classes = (
-    FCO_GuideObjRef,
-    FCO_GuideItem,
-    FCO_CollItem,
-    FCO_Settings,
-    FCO_OT_guide_add,
-    FCO_OT_guide_remove,
-    FCO_OT_guide_clear,
-    FCO_OT_coll_add,
-    FCO_OT_coll_remove,
-    FCO_OT_coll_clear,
-    FCO_OT_group_align,
-    FCO_OT_make_sphere,
-    FCO_OT_lock_start,
-    FCO_OT_lock_finish,
-    FCO_OT_build,
-    FCO_OT_path_relative,
-    FCO_OT_export_colmap,
-    FCO_OT_walkthrough_start,
-    FCO_OT_prepare_scene,
-    FCO_OT_confirm_resolution,
-    FCO_OT_selection_to_collection,
-    FCO_OT_save_version,
-    FCO_OT_walkthrough_nav,
-    FCO_OT_walkthrough_exit,
-    FCO_UL_guides,
-    FCO_UL_colls,
-    FCO_PT_panel,
-    FCO_PT_camera,
-    FCO_PT_target,
-    FCO_PT_group,
-    FCO_PT_sphere,
-    FCO_PT_build,
-    FCO_PT_render,
-    FCO_PT_export,
-    FCO_PT_advanced,
+    GCAPTURE_GuideObjRef,
+    GCAPTURE_GuideItem,
+    GCAPTURE_CollItem,
+    GCAPTURE_Settings,
+    GCAPTURE_OT_guide_add,
+    GCAPTURE_OT_guide_remove,
+    GCAPTURE_OT_guide_clear,
+    GCAPTURE_OT_coll_add,
+    GCAPTURE_OT_coll_remove,
+    GCAPTURE_OT_coll_clear,
+    GCAPTURE_OT_group_align,
+    GCAPTURE_OT_make_sphere,
+    GCAPTURE_OT_lock_start,
+    GCAPTURE_OT_lock_finish,
+    GCAPTURE_OT_build,
+    GCAPTURE_OT_path_relative,
+    GCAPTURE_OT_export_colmap,
+    GCAPTURE_OT_walkthrough_start,
+    GCAPTURE_OT_prepare_scene,
+    GCAPTURE_OT_confirm_resolution,
+    GCAPTURE_OT_selection_to_collection,
+    GCAPTURE_OT_save_version,
+    GCAPTURE_OT_walkthrough_nav,
+    GCAPTURE_OT_walkthrough_exit,
+    GCAPTURE_UL_guides,
+    GCAPTURE_UL_colls,
+    GCAPTURE_PT_panel,
+    GCAPTURE_PT_camera,
+    GCAPTURE_PT_target,
+    GCAPTURE_PT_group,
+    GCAPTURE_PT_sphere,
+    GCAPTURE_PT_build,
+    GCAPTURE_PT_render,
+    GCAPTURE_PT_export,
+    GCAPTURE_PT_advanced,
 )
 
 
 def register():
-    _fco_icons_load()
+    _gcapture_icons_load()
     for c in classes:
         bpy.utils.register_class(c)
-    bpy.types.Scene.fco_settings = PointerProperty(type=FCO_Settings)
-    if _fco_on_load_post not in _fco_handlers.load_post:
-        _fco_handlers.load_post.append(_fco_on_load_post)
-    if _fco_on_save_pre not in _fco_handlers.save_pre:
-        _fco_handlers.save_pre.append(_fco_on_save_pre)
+    bpy.types.Scene.gcapture_settings = PointerProperty(type=GCAPTURE_Settings)
+    if _gcapture_on_load_post not in _gcapture_handlers.load_post:
+        _gcapture_handlers.load_post.append(_gcapture_on_load_post)
+    if _gcapture_on_save_pre not in _gcapture_handlers.save_pre:
+        _gcapture_handlers.save_pre.append(_gcapture_on_save_pre)
     try:
-        _fco_msgbus_subscribe()
+        _gcapture_msgbus_subscribe()
     except Exception as exc:
-        print("[Gaussian Render Scan] msgbus:", exc)
+        print("[Gaussian Render Capture] msgbus:", exc)
+    # Beim Aktivieren ist bpy.data gesperrt -> kurz danach uebernehmen.
+    bpy.app.timers.register(_gcapture_migrate_timer, first_interval=0.1)
 
 
 def unregister():
     # Live-Lock-Handler sicher entfernen.
-    _fco_lock_remove()
-    for lst, fn in ((_fco_handlers.load_post, _fco_on_load_post),
-                    (_fco_handlers.save_pre, _fco_on_save_pre)):
+    _gcapture_lock_remove()
+    for lst, fn in ((_gcapture_handlers.load_post, _gcapture_on_load_post),
+                    (_gcapture_handlers.save_pre, _gcapture_on_save_pre)):
         if fn in lst:
             lst.remove(fn)
-    bpy.msgbus.clear_by_owner(_FCO_MSGBUS_OWNER)
-    del bpy.types.Scene.fco_settings
+    bpy.msgbus.clear_by_owner(_GCAPTURE_MSGBUS_OWNER)
+    del bpy.types.Scene.gcapture_settings
     for c in reversed(classes):
         bpy.utils.unregister_class(c)
-    _fco_icons_unload()
+    _gcapture_icons_unload()
 
 
 if __name__ == "__main__":

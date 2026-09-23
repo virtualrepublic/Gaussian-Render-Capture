@@ -35,6 +35,6 @@ the model fills and centres its square image.
 dataset folder `<Name>_COLMAP/<vNNN>/`.
 
 **Auto Scale** – the export scales the dataset so the cameras are on average 3 units from the
-centre; the factor is stored in `<vNNN>_gscan_export.json` next to the dataset folder.
+centre; the factor is stored in `<vNNN>_gcapture_export.json` next to the dataset folder.
 
 **Z-up / Y-up** – Blender uses Z as "up", many splatting tools use Y. The export converts it.

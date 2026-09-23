@@ -1,4 +1,4 @@
-# Gaussian Render Scan – synthetic COLMAP datasets for Gaussian Splatting
+# Gaussian Render Capture – synthetic COLMAP datasets for Gaussian Splatting
 
 A Blender add-on that turns a 3D model into a ready-to-train dataset for Gaussian Splatting.
 It places cameras on a sphere around your model, renders one image per camera and exports
@@ -31,7 +31,7 @@ Example model: LDraw model of set 10252 by Roland Dahl (RolandD), CC BY 2.0 – 
 ## Highlights
 
 - **Guide** for beginners, one step at a time, with checks.
-- **Prepare Scene** sets up Cycles on the GPU with scan render settings.
+- **Prepare Scene** sets up Cycles on the GPU with capture render settings.
 - **Camera sphere** – 20 to 1280 cameras; *Fill Each View* and *Center in Each View* make the
   model fill and centre every square image.
 - **Scene versions** – `<Name>_v001.blend` renders and exports into its own dataset folder
@@ -39,7 +39,7 @@ Example model: LDraw model of set 10252 by Roland Dahl (RolandD), CC BY 2.0 – 
 - **Live Camera Adjust** – fine-tune one view or the whole sphere through the camera.
 - **Start point cloud** from all model vertices plus surface points; a GPU visibility filter drops
   hidden inner parts.
-- **Auto scale** with the factor recorded in `<vNNN>_gscan_export.json` next to the dataset, so a
+- **Auto scale** with the factor recorded in `<vNNN>_gcapture_export.json` next to the dataset, so a
   trained splat can be placed back onto the model.
 
 ## Install
@@ -47,14 +47,19 @@ Example model: LDraw model of set 10252 by Roland Dahl (RolandD), CC BY 2.0 – 
 Blender 4.1 or later. Tested on Windows 11 (4.1, 4.4, 4.5, 5.0, 5.2, 5.3) and with the automated
 test suite on Linux (Ubuntu) and macOS (Apple Silicon) with Blender 4.1 and 5.2. GPU rendering on
 AMD, Intel and Apple GPUs has not been tried yet – reports are welcome in the
-[issues](https://github.com/virtualrepublic/Gaussian-Render-Scan/issues).
+[issues](https://github.com/virtualrepublic/Gaussian-Render-Capture/issues).
 
 For training: Postshot runs on Windows, LichtFeld Studio on Windows and Linux with an NVIDIA GPU.
 On macOS use a trainer that reads COLMAP datasets.
 
-1. *Edit → Preferences → Add-ons → Install from Disk…* and pick `gaussian_scan.py`.
-2. Enable **Gaussian Render Scan** (disable any older version first).
-3. The panel is in the 3D viewport sidebar (N), tab **Gaussian Render Scan** – press **Start Guide**.
+1. *Edit → Preferences → Add-ons → Install from Disk…* and pick `gaussian_capture.py`.
+2. Enable **Gaussian Render Capture** (disable any older version first).
+3. The panel is in the 3D viewport sidebar (N), tab **Gaussian Render Capture** – press **Start Guide**.
+
+**Upgrading from Gaussian Render Scan (1.0.x)** – the add-on was renamed in 1.1.0. Disable and
+remove *Gaussian Render Scan*, then install `gaussian_capture.py`. Scenes made with it are taken
+over automatically when you open them (settings, camera sphere, live adjustments); save them to
+keep the new names.
 
 ## Licence and credits
 

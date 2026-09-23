@@ -37,10 +37,10 @@ Contents: [0 Install](#0-install-the-add-on) · [Start the guide](#start-the-gui
 <img src="images/B02_prefs.png" alt="Preferences, Add-ons">
 
 1. *Edit → Preferences → Add-ons*, open the menu at the top right and choose
-   **Install from Disk…**, then pick `gaussian_scan.py`.
-2. Tick **Gaussian Render Scan** to enable it.
+   **Install from Disk…**, then pick `gaussian_capture.py`.
+2. Tick **Gaussian Render Capture** to enable it.
 
-**Check:** in the 3D viewport, press **N** – the sidebar has a tab **Gaussian Render Scan**.
+**Check:** in the 3D viewport, press **N** – the sidebar has a tab **Gaussian Render Capture**.
 
 > Blender 4.1 has the same button as *Install…* at the top of the Add-ons page.
 
@@ -51,7 +51,7 @@ Contents: [0 Install](#0-install-the-add-on) · [Start the guide](#start-the-gui
 <img src="images/B03_main_panel.png" alt="Main panel">
 
 Import your model first and put it into a collection of its own (*M → New Collection* in the
-viewport). Then open the sidebar tab **Gaussian Render Scan** and press **Start Guide**.
+viewport). Then open the sidebar tab **Gaussian Render Capture** and press **Start Guide**.
 
 The guide shows one step at a time. Two colours tell you what to do:
 
@@ -67,13 +67,13 @@ You can leave the guide with **Exit** at any time; all sections are then shown a
 
 <img src="images/B04_guide_intro.png" alt="Guide: Scene & Camera">
 
-**What it is for:** sets Blender up for the scan renders and chooses the camera lens.
+**What it is for:** sets Blender up for the capture renders and chooses the camera lens.
 
 1. Press **Prepare Scene**. Cycles now renders on your graphics card, with the render settings
-   that suit a scan (1024 samples, denoising, transparent background). Blender's start cube,
+   that suit a capture (1024 samples, denoising, transparent background). Blender's start cube,
    camera and light are removed – only if you did not change them.
 2. Import your model and put it into its own collection (if not done yet).
-3. Set the **Focal Length** of the scan camera – 50 mm is a good default.
+3. Set the **Focal Length** of the capture camera – 50 mm is a good default.
 4. Keep **Look Target** at *Geometry Center*.
 
 **Check:** the status line says *Scene prepared (Cycles on GPU)*.
@@ -116,7 +116,7 @@ standing on Z = 0, so the sphere is centred and the dataset stands upright.
 2. Press **Group & Align to Ground**.
 
 **Check:** the model stands on the grid, centred on the origin; the status line says
-*Grouped under 'GScan_Group'*.
+*Grouped under 'GCapture_Group'*.
 
 A floating object (no ground), or a model that is already in place: skip this step with **Next**.
 
@@ -137,7 +137,7 @@ face.
 4. Press **Create / Update Camera Sphere**.
 
 **Check:** a wireframe sphere surrounds the model; the status line shows *Camera_Sphere: 320
-cameras*. Camera and sphere live in their own collection *Scan_Rig*.
+cameras*. Camera and sphere live in their own collection *Capture_Rig*.
 
 <details><summary>Why Fill Each View and Center in Each View?</summary>
 
@@ -157,7 +157,7 @@ sits in the middle of the square image. Together they give the most detail per i
 
 <img src="images/B08_build.png" alt="Guide: Build Camera Animation">
 
-**What it is for:** creates the scan camera and gives it one keyframe per sphere face – frame 1 is
+**What it is for:** creates the capture camera and gives it one keyframe per sphere face – frame 1 is
 the first view, frame 320 the last.
 
 1. Press **Build Camera Animation**.
@@ -249,7 +249,7 @@ names the number of points and the scale.
 - **Add Random Face Points** adds points on large flat faces, 10 % of the vertex points by default.
 - **Auto Scale** scales the dataset so the cameras are on average 3 units away from the centre.
   Very small or very large scenes densify badly in Postshot. The factor (example: 7.83 – the cameras
-  orbit only 38 cm from the centre of this small model) is written to `v001_gscan_export.json` next to the dataset
+  orbit only 38 cm from the centre of this small model) is written to `v001_gcapture_export.json` next to the dataset
   folder.
 - **Reuse Point Cloud** copies the last point cloud if nothing changed that affects it.
 
@@ -304,7 +304,7 @@ existing splats are still refined, and fine details usually settle in the second
 <img src="images/B16_dataset_tree.png" alt="Dataset folder structure">
 
 `images.txt` holds one pose per image, `cameras.txt` the lens and image size, `points3D.txt` the
-start points. `v001_gscan_export.json` – next to the dataset, not inside, because Postshot would
+start points. `v001_gcapture_export.json` – next to the dataset, not inside, because Postshot would
 read any `.json` in the dataset as a camera file – records the scale and axis conversion of the
 export, so a trained splat can be placed back onto the model in Blender.
 

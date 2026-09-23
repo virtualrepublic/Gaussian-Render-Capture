@@ -7,10 +7,10 @@ in short.
 
 | Setting / button | Default | What it does |
 |---|---|---|
-| **Prepare Scene** | – | Cycles on the fastest GPU backend (OptiX, CUDA, HIP, Metal, oneAPI; GPUs on, CPU off), scan render settings (1024 samples, GPU denoising, all bounces 32, transparent film and glass, AgX Base Contrast), removes Blender's unchanged start cube, camera and light. |
-| Camera Name | Orbit_Camera | Name of the scan camera created by Build. |
+| **Prepare Scene** | – | Cycles on the fastest GPU backend (OptiX, CUDA, HIP, Metal, oneAPI; GPUs on, CPU off), capture render settings (1024 samples, GPU denoising, all bounces 32, transparent film and glass, AgX Base Contrast), removes Blender's unchanged start cube, camera and light. |
+| Camera Name | Orbit_Camera | Name of the capture camera created by Build. |
 | Start Frame | 1 | First frame of the camera animation. |
-| Focal Length (mm) | 50 | Lens of the scan camera; the sphere adapts its size to it. |
+| Focal Length (mm) | 50 | Lens of the capture camera; the sphere adapts its size to it. |
 | Look Target | Geometry Center | Where each camera looks: the centre of the model (recommended), the object origin, or along the face normal (only for a uniform sphere). |
 
 ## 2. Look Target
@@ -25,7 +25,7 @@ in short.
 | Setting / button | Default | What it does |
 |---|---|---|
 | Fast (bounding box) | off | Uses the objects' bounding boxes instead of all vertices – faster, slightly less exact for rotated parts. |
-| **Group & Align to Ground** | – | Groups the model under the empty *GScan_Group* at the world origin, standing on Z = 0. Only for objects on a ground. |
+| **Group & Align to Ground** | – | Groups the model under the empty *GCapture_Group* at the world origin, standing on Z = 0. Only for objects on a ground. |
 
 ## 4. Camera Sphere
 
@@ -37,7 +37,7 @@ in short.
 | Framing Margin | 1.0 | Room around the model; 1.0 fills the image, 1.1 leaves about 10 %. |
 | Upper Hemisphere Only | off | No views from below – for objects on a ground. |
 | Set as Guide | on | Makes the new sphere the guide for Build. |
-| **Create / Update Camera Sphere** | – | Creates or refits the sphere (collection *Scan_Rig*). Discards Live Camera Adjust changes. |
+| **Create / Update Camera Sphere** | – | Creates or refits the sphere (collection *Capture_Rig*). Discards Live Camera Adjust changes. |
 
 ## 5. Build Camera Animation
 
@@ -58,7 +58,7 @@ preset off when you render into a folder of your own.
 |---|---|---|
 | Resolution (square) | 1000 | Render resolution in pixels, width = height; applied at once. Confirm once with **OK**. |
 
-Under *Advanced → Render Setup* (keep on for a scan): Step per Frame (constant keyframes), Set as
+Under *Advanced → Render Setup* (keep on for a capture): Step per Frame (constant keyframes), Set as
 Active Camera, Set Scene Frame Range, Set Render Resolution. They apply at once and on every Build.
 
 ## 7. COLMAP Export
@@ -68,7 +68,7 @@ Active Camera, Set Scene Frame Range, Set Render Resolution. They apply at once 
 | Output Folder | `//<Name>_COLMAP/<vNNN>/` | Dataset folder; follows the loaded version. Enter your own to override. |
 | Image Folder | folder of the render output | Where the rendered images are; follows the render output. |
 | Point Source | Look Target Collections | Where the start points come from: the look-target collections, all visible meshes, or named objects. |
-| Auto Scale / Target Radius | on / 3.0 | Scales the dataset so the cameras are on average 3 units from the centre (Postshot densifies very small or large scenes badly). The factor goes into `<vNNN>_gscan_export.json` next to the dataset folder. |
+| Auto Scale / Target Radius | on / 3.0 | Scales the dataset so the cameras are on average 3 units from the centre (Postshot densifies very small or large scenes badly). The factor goes into `<vNNN>_gcapture_export.json` next to the dataset folder. |
 | Use Vertex Count | on | Every vertex of the model becomes a start point. Off: set *Max Points* yourself. |
 | Point Color | Neutral Gray | Colour of the start points: grey, a vertex colour layer, or the material base colour. |
 | Images | Don't include | Only with your own render folder: *Copy* or *Move* the images into the dataset. |
@@ -77,7 +77,7 @@ Active Camera, Set Scene Frame Range, Set Render Resolution. They apply at once 
 | Add Random Face Points / Face Points | on / 10 % | Extra points spread over the surfaces, as a share of the vertex points. |
 | Crop Point Cloud | off | Keeps only points inside the bounds of a chosen object (plus margin). |
 | Reuse Point Cloud | on | Copies the last point cloud if nothing that affects it has changed. |
-| **Export COLMAP (Postshot / LichtFeld)** | – | Writes `sparse/0/` and, if chosen, the images into the dataset, and `<vNNN>_gscan_export.json` next to it. |
+| **Export COLMAP (Postshot / LichtFeld)** | – | Writes `sparse/0/` and, if chosen, the images into the dataset, and `<vNNN>_gcapture_export.json` next to it. |
 
 ## Advanced
 

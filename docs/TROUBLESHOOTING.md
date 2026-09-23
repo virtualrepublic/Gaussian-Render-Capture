@@ -33,12 +33,12 @@ graphics card; this needs a Blender window (in the background it falls back to a
 ray cast). Press Esc to cancel – the points collected so far are written.
 
 **The splat is much smaller or larger than the model in Blender.** The export scales the dataset
-(*Auto Scale*). The factor and the matrices to undo it are in `<vNNN>_gscan_export.json` next to
+(*Auto Scale*). The factor and the matrices to undo it are in `<vNNN>_gcapture_export.json` next to
 the dataset folder.
 
 **Postshot: "Failed to Camera Poses from JSON file ... missing frames member".** Postshot reads
-every `.json` inside the dataset folder as a camera file. Exports before version 0.145 put
-`gscan_export.json` into the dataset - move it out (next to the folder) or export again.
+every `.json` inside the dataset folder as a camera file. The add-on writes its info file next to
+the dataset, never inside – if a `.json` ended up in the dataset folder, move it out.
 
 **The splat looks noisy in Blender 5.3 EEVEE.** See [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
