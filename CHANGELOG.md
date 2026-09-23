@@ -4,6 +4,11 @@ All notable changes to this project are documented here. The project follows
 [Semantic Versioning](https://semver.org/): PATCH for fixes, MINOR for new features, MAJOR for
 changes that break existing scenes or settings.
 
+## [1.0.1] – 2026-09-23
+
+- Documentation: supported platforms stated precisely – tested on Windows 11; Linux and macOS
+  expected to work but not tested yet. Which trainer runs on which system.
+
 ## [1.0.0] – 2026-09-23
 
 First public release.
