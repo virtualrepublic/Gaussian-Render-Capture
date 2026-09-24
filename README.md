@@ -46,9 +46,10 @@ Example model: LDraw model of set 10252 by Roland Dahl (RolandD), CC BY 2.0 – 
 
 ## Install
 
-Blender 4.1 or later. Tested on Windows 11 (4.1, 4.4, 4.5, 5.0, 5.2, 5.3) and with the automated
-test suite on Linux (Ubuntu) and macOS (Apple Silicon) with Blender 4.1 and 5.2. GPU rendering on
-AMD, Intel and Apple GPUs has not been tried yet – reports are welcome in the
+Blender 4.1 or later. Tested by hand on Windows 11 (4.1, 4.4, 4.5, 5.0, 5.2, 5.3). On Linux
+(Ubuntu) and macOS (Apple Silicon) only the automated test suite has run, with Blender 4.1 and 5.2,
+on GitHub's virtual test machines – not yet on physical computers. GPU rendering on AMD, Intel and
+Apple GPUs has not been tried yet – reports are welcome in the
 [issues](https://github.com/virtualrepublic/Gaussian-Render-Capture/issues).
 
 For training: Postshot runs on Windows, LichtFeld Studio on Windows and Linux with an NVIDIA GPU.

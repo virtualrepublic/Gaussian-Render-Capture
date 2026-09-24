@@ -11,6 +11,8 @@ changes that break existing scenes or settings.
   While they run, all other settings and the guide navigation are locked; Esc cancels.
 - README: maintainer credits on three lines, with links to the course and the university.
 - Transparency note: "has worked in CGI since 1987" instead of "many years of experience".
+- README: Linux and macOS are covered only by the automated test suite on GitHub's virtual test
+  machines, not yet on physical computers – stated explicitly.
 
 ## [1.1.3] – 2026-09-24
 
