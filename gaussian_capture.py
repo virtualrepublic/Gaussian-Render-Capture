@@ -44,7 +44,7 @@ Code comments are in German.
 bl_info = {
     "name": "Gaussian Render Capture",
     "author": "Prof. Michael Klein - Mediadesign University of Applied Sciences",
-    "version": (1, 1, 4),
+    "version": (1, 1, 5),
     "blender": (4, 1, 0),
     "location": "View3D > Sidebar (N) > Gaussian Render Capture",
     "description": "Synthetic COLMAP datasets for Gaussian Splatting: camera "
@@ -439,9 +439,9 @@ class GCAPTURE_Settings(PropertyGroup):
                     "mesh surfaces, area-weighted (large flat faces get "
                     "proportionally more points than the mesh topology alone "
                     "provides). Gives an even starting density independent of "
-                    "vertex layout. Comes on top of Max Points. For "
-                    "LichtFeld (MRNF) leave it off: a dense, even start cloud "
-                    "makes it grow fewer splats",
+                    "vertex layout. Comes on top of Max Points. If LichtFeld "
+                    "(MRNF) grows too few splats, try without: a dense, even "
+                    "start cloud may leave it less to densify",
         default=True,
     )
     exp_face_points_count: IntProperty(

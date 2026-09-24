@@ -5,6 +5,10 @@ All notable changes to this project are documented here. The project follows
 changes that break existing scenes or settings. Only changes to the add-on itself are listed;
 documentation changes are not.
 
+## [1.1.5] – unreleased
+
+No functional changes – texts in the add-on and the documentation were revised in content and form.
+
 ## [1.1.4] – 2026-09-24
 
 - Progress of *Build Camera Animation* and *Export COLMAP* is shown as a progress bar in the
