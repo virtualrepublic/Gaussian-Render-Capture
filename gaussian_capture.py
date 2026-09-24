@@ -24,8 +24,9 @@ from its utils/ray_casting.py and still part of this file:
 and the idea of a list of guide meshes. Everything else is original work.
 See THIRD_PARTY.md.
 
-Maintainer: Prof. Michael Klein - Digital Film Design, Animation/VFX,
-Mediadesign University of Applied Sciences
+Maintainer: Prof. Michael Klein
+    Digital Film Design — Animation/VFX · Mediadesign University of
+    Applied Sciences
     https://www.mediadesign.de  https://www.virtualrepublic.org
     https://www.renderbricks.com
     https://www.linkedin.com/in/virtualrepublic/
