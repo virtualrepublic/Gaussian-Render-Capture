@@ -57,6 +57,8 @@ preset off when you render into a folder of your own.
 | Setting | Default | What it does |
 |---|---|---|
 | Resolution (square) | 1000 | Render resolution in pixels, width = height; applied at once. Confirm once with **OK**. |
+| **Cycles** | – | Renders one image per camera into the dataset with Cycles on the GPU and the settings of *Prepare Scene*. Exact, slower. |
+| **EEVEE** | – | The same with EEVEE: much faster, lighting approximated. The first time it applies a capture preset (256 samples, ray tracing and fast GI at full resolution, soft shadows, overscan); your later changes are kept. |
 
 Under *Advanced → Render Setup* (keep on for a capture): Step per Frame (constant keyframes), Set as
 Active Camera, Set Scene Frame Range, Set Render Resolution. They apply at once and on every Build.

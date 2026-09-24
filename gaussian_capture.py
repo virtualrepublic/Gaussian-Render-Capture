@@ -2969,6 +2969,79 @@ _GCAPTURE_PREPARE_SETTINGS = (
     ("eevee.ray_tracing_options.backface_radiance_scale", 0.0),
 )
 
+# EEVEE-Preset fuer Captures (v1.1.5): so ansichtsunabhaengig und so nah an
+# Cycles wie moeglich -- Raytracing und Fast GI in voller Aufloesung, weiche
+# Schatten mit vielen Strahlen, Overscan gegen Randeffekte, mehr Samples.
+# Erste Fassung; per Messung (Cycles gegen EEVEE, Beetle) zu kalibrieren.
+# Aendert sich die Tabelle, _GCAPTURE_EEVEE_PRESET erhoehen: dann wird sie
+# beim naechsten EEVEE-Render erneut angewendet, sonst bleiben Aenderungen
+# des Nutzers erhalten.
+_GCAPTURE_EEVEE_PRESET = 1
+_GCAPTURE_EEVEE_SETTINGS = (
+    ("eevee.taa_render_samples", 256),
+    ("eevee.use_raytracing", True),
+    ("eevee.ray_tracing_method", 'SCREEN'),
+    ("eevee.ray_tracing_options.resolution_scale", '1'),
+    ("eevee.ray_tracing_options.screen_trace_quality", 1.0),
+    ("eevee.ray_tracing_options.use_denoise", True),
+    ("eevee.use_fast_gi", True),
+    ("eevee.fast_gi_method", 'GLOBAL_ILLUMINATION'),
+    ("eevee.fast_gi_resolution", '1'),
+    ("eevee.fast_gi_ray_count", 4),
+    ("eevee.fast_gi_step_count", 16),
+    ("eevee.fast_gi_quality", 1.0),
+    ("eevee.use_shadows", True),
+    ("eevee.shadow_ray_count", 4),
+    ("eevee.shadow_step_count", 16),
+    ("eevee.shadow_resolution_scale", 1.0),
+    ("eevee.light_threshold", 0.001),
+    ("eevee.use_overscan", True),
+    ("eevee.overscan_size", 10.0),
+    ("render.film_transparent", True),
+)
+
+
+def _gcapture_apply_settings(scene, table):
+    """(Pfad, Wert)-Tabelle auf die Szene anwenden; Rueckgabe: uebersprungene
+    Pfade (in dieser Blender-Version unbekannt)."""
+    skipped = []
+    for path, value in table:
+        owner_path, _, attr = path.rpartition(".")
+        owner = scene
+        try:
+            for part in owner_path.split("."):
+                owner = getattr(owner, part)
+            setattr(owner, attr, value)
+        except (AttributeError, TypeError, ValueError):
+            skipped.append(path)
+    return skipped
+
+
+def _gcapture_apply_prepare(scene, dtype):
+    """Cycles-Einstellungen von Prepare Scene. Blender 4.1: OpenImageDenoise
+    zaehlt beim Start alle SYCL-Geraete auf und scheitert mit aktuellen
+    Intel-Treibern (PI_ERROR_INVALID_VALUE) -- auch auf der CPU. Rendert
+    Cycles dort mit OptiX, entrauscht dessen Denoiser (v1.1.5)."""
+    skipped = _gcapture_apply_settings(scene, _GCAPTURE_PREPARE_SETTINGS)
+    _gcapture_fix_denoiser(scene, dtype)
+    return skipped
+
+
+def _gcapture_fix_denoiser(scene, dtype):
+    if bpy.app.version < (4, 2, 0) and dtype == 'OPTIX':
+        try:
+            scene.cycles.denoiser = 'OPTIX'
+        except (AttributeError, TypeError):
+            pass
+
+
+def _gcapture_eevee_engine():
+    """Kennung von EEVEE in dieser Blender-Version (4.2-4.x: EEVEE Next)."""
+    items = {i.identifier for i in
+             bpy.types.RenderSettings.bl_rna.properties['engine'].enum_items}
+    return 'BLENDER_EEVEE_NEXT' if 'BLENDER_EEVEE_NEXT' in items else 'BLENDER_EEVEE'
+
+
 # Reihenfolge der GPU-Backends: das erste mit einer GPU gewinnt.
 _GCAPTURE_GPU_TYPES = ('OPTIX', 'CUDA', 'HIP', 'METAL', 'ONEAPI')
 
@@ -3021,7 +3094,88 @@ def _gcapture_start_object_unchanged(obj):
 def _gcapture_scene_prepared(scene):
     """Prepare Scene lief in dieser Szene und sie rendert noch mit Cycles
     (v138; vorher genuegte Cycles + GPU, was viele Startdateien schon sind)."""
-    return bool(scene.get("gcapture_prepared")) and scene.render.engine == 'CYCLES'
+    return (bool(scene.get("gcapture_prepared"))
+            and scene.render.engine in ('CYCLES', 'BLENDER_EEVEE',
+                                        'BLENDER_EEVEE_NEXT'))
+
+
+class GCAPTURE_OT_render_images(Operator):
+    """Rendert alle Kameras in den Datensatz (v1.1.5): Cycles mit den
+    Einstellungen von Prepare Scene, EEVEE mit dem Capture-Preset."""
+    bl_idname = "gcapture.render_images"
+    bl_label = "Render Images"
+    bl_options = {'REGISTER'}
+
+    engine: EnumProperty(
+        name="Engine",
+        items=[('CYCLES', "Cycles", "Path tracing - exact, slower"),
+               ('EEVEE', "EEVEE", "Real-time engine - much faster, "
+                "approximate lighting")],
+        default='CYCLES')
+
+    @classmethod
+    def description(cls, context, props):
+        if props.engine == 'EEVEE':
+            return ("Render one image per camera into the dataset folder with "
+                    "EEVEE - much faster than Cycles, lighting approximated. "
+                    "The capture preset is applied once; later changes of "
+                    "yours are kept")
+        return ("Render one image per camera into the dataset folder with "
+                "Cycles on the GPU - exact path tracing, with the settings "
+                "of Prepare Scene")
+
+    @classmethod
+    def poll(cls, context):
+        return (context.scene.camera is not None
+                and not bpy.app.is_job_running('RENDER'))
+
+    def _prepare(self, context):
+        """Engine und Einstellungen setzen; Rueckgabe: Fehlertext oder None."""
+        scene = context.scene
+        s = scene.gcapture_settings
+        if not bpy.data.filepath:
+            return "Save the scene first (step 5, Save Version)"
+        if _gcapture_wt_status_build_poses(context, s)[0] != 'DONE':
+            return "Build the camera animation first (step 5)"
+        if self.engine == 'EEVEE':
+            scene.render.engine = _gcapture_eevee_engine()
+            if scene.get("gcapture_eevee_preset") != _GCAPTURE_EEVEE_PRESET:
+                skipped = _gcapture_apply_settings(scene, _GCAPTURE_EEVEE_SETTINGS)
+                scene["gcapture_eevee_preset"] = _GCAPTURE_EEVEE_PRESET
+                if skipped:
+                    print("[Gaussian Render Capture] EEVEE preset skipped (not "
+                          "in this Blender version): %s" % ", ".join(skipped))
+        else:
+            dtype, _ = _gcapture_setup_gpu()
+            if not scene.get("gcapture_prepared"):
+                _gcapture_apply_prepare(scene, dtype)
+                scene["gcapture_prepared"] = True
+            else:
+                _gcapture_fix_denoiser(scene, dtype)
+            scene.render.engine = 'CYCLES'
+            scene.cycles.device = 'GPU' if dtype else 'CPU'
+        _gcapture_apply_render_setup(scene, s)
+        out = os.path.dirname(bpy.path.abspath(scene.render.filepath))
+        if out:
+            os.makedirs(out, exist_ok=True)
+        return None
+
+    def invoke(self, context, event):
+        err = self._prepare(context)
+        if err:
+            self.report({'ERROR'}, err)
+            return {'CANCELLED'}
+        # Blenders Renderfenster mit Fortschritt; Esc bricht ab.
+        bpy.ops.render.render('INVOKE_DEFAULT', animation=True)
+        return {'FINISHED'}
+
+    def execute(self, context):
+        err = self._prepare(context)
+        if err:
+            self.report({'ERROR'}, err)
+            return {'CANCELLED'}
+        bpy.ops.render.render(animation=True)
+        return {'FINISHED'}
 
 
 class GCAPTURE_OT_confirm_resolution(Operator):
@@ -3051,16 +3205,7 @@ class GCAPTURE_OT_prepare_scene(Operator):
     def execute(self, context):
         scene = context.scene
         dtype, gpus = _gcapture_setup_gpu()
-        skipped = []
-        for path, value in _GCAPTURE_PREPARE_SETTINGS:
-            owner_path, _, attr = path.rpartition(".")
-            owner = scene
-            try:
-                for part in owner_path.split("."):
-                    owner = getattr(owner, part)
-                setattr(owner, attr, value)
-            except (AttributeError, TypeError, ValueError):
-                skipped.append(path)
+        skipped = _gcapture_apply_prepare(scene, dtype)
         scene.cycles.device = 'GPU' if dtype else 'CPU'
         scene["gcapture_prepared"] = True     # Schritt erledigt (v138)
         removed = []
@@ -3527,9 +3672,28 @@ def _gcapture_draw_render(layout, context):
         box.label(text="Render output: %s" % context.scene.render.filepath,
                   icon='OUTPUT')
     _gcapture_action(box, "gcapture.save_version", not bpy.data.filepath, 'FILE_TICK')
+
+    # Rendern direkt aus dem Add-on (v1.1.5). Blau: der offene Schritt, und
+    # zwar die Engine, auf der die Szene gerade steht.
+    pending = _gcapture_wt_status_render(context, s)[0] != 'DONE'
+    eevee = context.scene.render.engine != 'CYCLES'
+    rcol = layout.column(align=True)
+    rcol.enabled = bool(bpy.data.filepath)
+    row = rcol.row(align=True)
+    row.scale_y = 1.4
+    op = row.operator("gcapture.render_images", text="Cycles",
+                      icon='SHADING_RENDERED', depress=pending and not eevee)
+    op.engine = 'CYCLES'
+    op = row.operator("gcapture.render_images", text="EEVEE",
+                      icon='SHADING_SOLID', depress=pending and eevee)
+    op.engine = 'EEVEE'
+    hint = rcol.column(align=True)
+    hint.scale_y = 0.8
+    hint.label(text="Cycles: exact, slower. EEVEE: much faster,")
+    hint.label(text="lighting approximated. Esc cancels.")
     if not s.wt_active:
-        layout.label(text="Then render the animation (Render > Render Animation).",
-                     icon='RENDER_ANIMATION')
+        layout.label(text="Render farm: render the saved scene there.",
+                     icon='INFO')
 
 
 def _gcapture_section(layout, title, icon):
@@ -3879,8 +4043,9 @@ _GCAPTURE_WT_STEPS = [
          steps=["Check the Resolution and confirm it with OK - or change "
                 "it.",
                 "Check the render output in the box below.",
-                "Render the animation: Render > Render Animation - locally "
-                "or on a render farm."],
+                "Render the images: Cycles (exact, slower) or EEVEE (much "
+                "faster, lighting approximated) - or render the saved scene "
+                "on a render farm."],
          check="the status line shows all images found.",
          note=["A change of the resolution applies at once."]),
     dict(title="7. COLMAP Export", badge='gcapture_6', icon='EXPORT',
@@ -6075,6 +6240,7 @@ classes = (
     GCAPTURE_OT_export_colmap,
     GCAPTURE_OT_walkthrough_start,
     GCAPTURE_OT_prepare_scene,
+    GCAPTURE_OT_render_images,
     GCAPTURE_OT_confirm_resolution,
     GCAPTURE_OT_selection_to_collection,
     GCAPTURE_OT_save_version,

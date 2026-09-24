@@ -209,7 +209,9 @@ adjustments – the panel shows a red warning and Build asks before it does so.
 1. Check the **Resolution** and confirm it with **OK** – or change it (example: 3840 px).
 2. Check the render output: the box says `Renders go to Beetle_COLMAP\v001\images`. The guide has
    opened the **Output** tab, where you see the same path.
-3. Render the animation: **Render → Render Animation** – on this computer or on a render farm.
+3. Render the images: press **Cycles** (exact path tracing, slower) or **EEVEE** (much faster,
+   lighting approximated). Blender's render window shows the progress; **Esc** cancels. On a
+   render farm, render the saved scene there instead.
 
 **Check:** the status line turns green: *All 320 images found in 'images'*.
 
