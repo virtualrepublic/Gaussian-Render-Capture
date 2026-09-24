@@ -4,6 +4,11 @@ All notable changes to this project are documented here. The project follows
 [Semantic Versioning](https://semver.org/): PATCH for fixes, MINOR for new features, MAJOR for
 changes that break existing scenes or settings.
 
+## [1.1.4] – unreleased
+
+- Progress of *Build Camera Animation* and *Export COLMAP* is shown as a progress bar in the
+  panel, in place of the button (guide and normal panel), instead of the viewport header.
+
 ## [1.1.3] – 2026-09-24
 
 - COLMAP export: focal length and principal point now follow Blender's camera model in every

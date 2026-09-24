@@ -43,7 +43,7 @@ Code comments are in German.
 bl_info = {
     "name": "Gaussian Render Capture",
     "author": "Prof. Michael Klein - Mediadesign University of Applied Sciences",
-    "version": (1, 1, 3),
+    "version": (1, 1, 4),
     "blender": (4, 1, 0),
     "location": "View3D > Sidebar (N) > Gaussian Render Capture",
     "description": "Synthetic COLMAP datasets for Gaussian Splatting: camera "
@@ -2427,18 +2427,16 @@ class GCAPTURE_OT_build(Operator):
             if self._done >= self._total:
                 return self._finish(context)
 
-            pct = int((self._done / self._total) * 100)
             elapsed = time.time() - self._start_time
             time_info = ""
             if self._done > 0:
                 per = elapsed / self._done
                 rem = int(per * (self._total - self._done))
                 tstr = ("%dm %ds" % (rem // 60, rem % 60)) if rem >= 60 else ("%ds" % rem)
-                time_info = " - ~%s" % tstr
-            if context.area:
-                context.area.header_text_set(
-                    "Building cameras: %d/%d (%d%%)%s - ESC to cancel"
-                    % (self._done, self._total, pct, time_info))
+                time_info = ", ~%s left" % tstr
+            _gcapture_progress_set(
+                "gcapture.build_animation", self._done / self._total,
+                "Building cameras %d/%d%s" % (self._done, self._total, time_info))
 
             # Batchgroesse: ohne Interior-Check sind Posen sehr schnell ->
             # grosse Batches; mit Interior-Check (Ray-Cast) kleinere.
@@ -2519,8 +2517,7 @@ class GCAPTURE_OT_build(Operator):
         if getattr(self, "_timer", None):
             context.window_manager.event_timer_remove(self._timer)
             self._timer = None
-        if context.area:
-            context.area.header_text_set(None)
+        _gcapture_progress_clear("gcapture.build_animation")
         self._bvh_cache = None
         GCAPTURE_OT_build._is_running = False
 
@@ -3424,13 +3421,14 @@ def _gcapture_draw_build(layout, context):
     s = context.scene.gcapture_settings
     if not s.wt_active:
         layout.label(text="One keyframe per sphere face:")
-    brow = layout.row()
-    brow.scale_y = 1.4
-    # Waehrend Live Camera Lock aktiv: Build gesperrt (erst Finish).
-    brow.enabled = not s.live_lock
-    _gcapture_action(brow, "gcapture.build_animation",
-                _gcapture_wt_status_build_poses(context, s)[0] != 'DONE',
-                'CON_CAMERASOLVER')
+    if not _gcapture_progress_draw(layout, "gcapture.build_animation"):
+        brow = layout.row()
+        brow.scale_y = 1.4
+        # Waehrend Live Camera Lock aktiv: Build gesperrt (erst Finish).
+        brow.enabled = not s.live_lock
+        _gcapture_action(brow, "gcapture.build_animation",
+                    _gcapture_wt_status_build_poses(context, s)[0] != 'DONE',
+                    'CON_CAMERASOLVER')
     if not s.live_lock and _sph_has_adjustments(s.sph_object):
         wrow = layout.row()
         wrow.alert = True
@@ -3651,10 +3649,12 @@ def _gcapture_draw_export(layout, context):
                        icon='FILE_TICK')
         else:
             rrow.label(text="No stored point cloud yet", icon='INFO')
-    erow2 = layout.row()
-    erow2.scale_y = 1.3
-    _gcapture_action(erow2, "gcapture.export_colmap",
-                not _exp_output_has_export(_exp_resolve_output_dir(s)), 'EXPORT')
+    if not _gcapture_progress_draw(layout, "gcapture.export_colmap"):
+        erow2 = layout.row()
+        erow2.scale_y = 1.3
+        _gcapture_action(erow2, "gcapture.export_colmap",
+                    not _exp_output_has_export(_exp_resolve_output_dir(s)),
+                    'EXPORT')
     if s.exp_last_points:
         rcol = layout.column(align=True)
         rcol.label(text="Last export: {:,} points".format(s.exp_last_points),
@@ -3910,6 +3910,45 @@ def _gcapture_wt_draw_text(layout, context, step):
             dot.scale_y = 0.85
             dot.label(text="•")
             _gcapture_wrap(row.column(align=True), context, line, indent_px=34)
+
+
+# Fortschritt langer Ablaeufe (Build, Export) im Panel an der Stelle des
+# Knopfs statt in der Kopfzeile des Viewports (v1.1.4). Nur zur Laufzeit.
+_GCAPTURE_PROGRESS = {}   # op_id -> (Anteil 0..1, Text)
+
+
+def _gcapture_redraw_viewports():
+    try:
+        for win in bpy.context.window_manager.windows:
+            for area in win.screen.areas:
+                if area.type == 'VIEW_3D':
+                    area.tag_redraw()
+    except Exception:
+        pass
+
+
+def _gcapture_progress_set(op_id, factor, text):
+    _GCAPTURE_PROGRESS[op_id] = (max(0.0, min(1.0, float(factor))), text)
+    _gcapture_redraw_viewports()
+
+
+def _gcapture_progress_clear(op_id):
+    if _GCAPTURE_PROGRESS.pop(op_id, None) is not None:
+        _gcapture_redraw_viewports()
+
+
+def _gcapture_progress_draw(layout, op_id):
+    """Zeichnet den Fortschritt von op_id, falls er laeuft -> True."""
+    p = _GCAPTURE_PROGRESS.get(op_id)
+    if p is None:
+        return False
+    col = layout.box().column()
+    if hasattr(col, "progress"):
+        col.progress(factor=p[0], type='BAR', text=p[1])
+    else:
+        col.label(text="%d %%  %s" % (int(p[0] * 100), p[1]))
+    col.label(text="Esc: cancel", icon='CANCEL')
+    return True
 
 
 def _gcapture_action(layout, op_id, pending, icon, text=None):
@@ -5650,18 +5689,16 @@ class GCAPTURE_OT_export_colmap(Operator):
                 return self._finish(context)
 
             # Fortschritt im Header.
-            pct = int((self._done / self._total) * 100)
             elapsed = time.time() - self._start_time
             time_info = ""
             if self._done > 0:
                 per = elapsed / self._done
                 rem = int(per * (self._total - self._done))
                 tstr = ("%dm %ds" % (rem // 60, rem % 60)) if rem >= 60 else ("%ds" % rem)
-                time_info = " - ~%s remaining" % tstr
-            if context.area:
-                context.area.header_text_set(
-                    "COLMAP Export: %d/%d (%d%%)%s - ESC to cancel"
-                    % (self._done, self._total, pct, time_info))
+                time_info = ", ~%s left" % tstr
+            _gcapture_progress_set(
+                "gcapture.export_colmap", self._done / self._total,
+                "Camera poses %d/%d%s" % (self._done, self._total, time_info))
 
             # Mehrere Pose-Frames pro Tick abarbeiten (schnell).
             try:
@@ -5822,12 +5859,10 @@ class GCAPTURE_OT_export_colmap(Operator):
         self._flt_idx = end
 
         # Header.
-        pct = int((self._flt_idx / max(self._flt_total, 1)) * 100)
-        if context.area:
-            context.area.header_text_set(
-                "Visibility filter: %d%% (%d/%d, %d kept) - ESC to cancel"
-                % (pct, self._flt_idx, self._flt_total,
-                   len(self._flt_kept_pts)))
+        _gcapture_progress_set(
+            "gcapture.export_colmap", self._flt_idx / max(self._flt_total, 1),
+            "Visibility filter %d/%d points, %d kept"
+            % (self._flt_idx, self._flt_total, len(self._flt_kept_pts)))
 
         if self._flt_idx >= self._flt_total:
             cols = self._flt_kept_cols if self._flt_cols is not None else None
@@ -5857,17 +5892,15 @@ class GCAPTURE_OT_export_colmap(Operator):
                                          self._flt_fov)
             self._flt_vis[todo[seen]] = True
             self._flt_cam_i += 1
-        if context.area:
-            if getattr(self, "_flt_compute", False):
-                context.area.header_text_set(
-                    "Visibility filter (GPU): camera %d/%d - ESC to cancel"
-                    % (self._flt_cam_i, n_cams))
-            else:
-                context.area.header_text_set(
-                    "Visibility filter (GPU): camera %d/%d, %d of %d points "
-                    "visible - ESC to cancel"
-                    % (self._flt_cam_i, n_cams, int(self._flt_vis.sum()),
-                       self._flt_total))
+        if getattr(self, "_flt_compute", False):
+            ftext = "Visibility filter (GPU): camera %d/%d" % (
+                self._flt_cam_i, n_cams)
+        else:
+            ftext = ("Visibility filter (GPU): camera %d/%d, %d of %d points "
+                     "visible" % (self._flt_cam_i, n_cams,
+                                  int(self._flt_vis.sum()), self._flt_total))
+        _gcapture_progress_set("gcapture.export_colmap",
+                               self._flt_cam_i / max(n_cams, 1), ftext)
         if self._flt_cam_i >= n_cams:
             keep = np.nonzero(self._flt_vis)[0]
             pts = [self._flt_pts[i] for i in keep]
@@ -5949,8 +5982,7 @@ class GCAPTURE_OT_export_colmap(Operator):
         if getattr(self, "_timer", None):
             context.window_manager.event_timer_remove(self._timer)
             self._timer = None
-        if context.area:
-            context.area.header_text_set(None)
+        _gcapture_progress_clear("gcapture.export_colmap")
         try:
             context.scene.frame_set(self._orig_frame)
         except Exception:
