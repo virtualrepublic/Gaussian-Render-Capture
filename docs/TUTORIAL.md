@@ -136,7 +136,7 @@ face.
 2. Keep **Fill Each View** and **Center in Each View** on.
 3. Object on a ground: turn on **Upper Hemisphere Only**. Floating object: leave it off – the
    full sphere also sees it from below.
-4. Press **Create / Update Camera Sphere**.
+4. Keep **Build Cameras on This Sphere** on and press **Create / Update Camera Sphere**.
 
 **Check:** a wireframe sphere surrounds the model; the status line shows *Camera_Sphere: 320
 cameras*. Camera and sphere live in their own collection *Capture_Rig*.
@@ -209,14 +209,15 @@ adjustments – the panel shows a red warning and Build asks before it does so.
 1. Check the **Resolution** and confirm it with **OK** – or change it (example: 3840 px).
 2. Check the render output: the box says `Renders go to Beetle_COLMAP\v001\images`. The guide has
    opened the **Output** tab, where you see the same path.
-3. Render the images: press **Render Cycles** (exact path tracing, slower) or **Render EEVEE** (much faster,
-   lighting approximated). Blender's render window shows the progress; **Esc** cancels. On a
+3. Render the images: press **Render EEVEE** (much faster, lighting approximated) or
+   **Render Cycles** (exact path tracing, slower). Blender's render window shows the progress; **Esc** cancels. On a
    render farm, render the saved scene there instead.
 
-   *Command Line Render* (headless): with this option the buttons read **Write Cycles .cmd** /
-   **Write EEVEE .cmd**; they save the scene and write a
-   script next to it, e.g. `Beetle_v001_render_cycles.cmd`. Double-click it to render without
-   Blender's interface – Blender stays free, and the render goes on when you close Blender.
+   *Command Line Render* (headless): with this option the buttons read **Write EEVEE .cmd** /
+   **Write Cycles .cmd**. They save the scene and write a script next to it, e.g.
+   `Beetle_v001_render_eevee.cmd`. Double-click it to render without Blender's interface –
+   Blender stays free, and the render goes on when you close Blender. On macOS the script is a
+   `.command`, on Linux a `.sh`.
 
 **Check:** the status line turns green: *All 320 images found in 'images'*.
 
@@ -240,6 +241,10 @@ under *Advanced → Render Setup* and should stay on.
 
 **What it is for:** writes the camera poses and a start point cloud next to the images – the
 finished dataset for the trainer.
+
+The panel groups the settings into **Dataset** (where the dataset and the images are),
+**Start Points** (what goes into the point cloud) and **Scale & Axes**. The defaults fit most
+models; while the export runs, a progress bar replaces the button and **Esc** cancels.
 
 1. Keep **Use Vertex Count** on: every vertex of the model becomes a start point.
 2. Keep **Visibility Filter** at **Visible Only**: points no camera can see (hidden inner parts)

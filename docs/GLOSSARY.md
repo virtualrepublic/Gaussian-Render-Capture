@@ -37,4 +37,11 @@ dataset folder `<Name>_COLMAP/<vNNN>/`.
 **Auto Scale** – the export scales the dataset so the cameras are on average 3 units from the
 centre; the factor is stored in `<vNNN>_gcapture_export.json` next to the dataset folder.
 
+**EEVEE / Cycles** – Blender's two render engines. Cycles traces light paths physically (exact,
+slower); EEVEE approximates lighting in real time (much faster). For splats every view must be lit
+consistently – Cycles guarantees that, EEVEE comes close with the capture preset.
+
+**Command Line Render (headless)** – rendering without Blender's interface, started from a script
+(`blender -b <scene> -a`). The add-on writes such a script next to the scene; double-click it.
+
 **Z-up / Y-up** – Blender uses Z as "up", many splatting tools use Y. The export converts it.

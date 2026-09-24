@@ -39,8 +39,10 @@ Example model: LDraw model of set 10252 by Roland Dahl (RolandD), CC BY 2.0 – 
 - **Scene versions** – `<Name>_v001.blend` renders and exports into its own dataset folder
   `<Name>_COLMAP/v001/`; versions never mix.
 - **Live Camera Adjust** – fine-tune one view or the whole sphere through the camera.
-- **Start point cloud** from all model vertices plus surface points; a GPU visibility filter drops
-  hidden inner parts.
+- **Render from the panel** – *Render EEVEE* (fast) or *Render Cycles* (exact); or *Command Line
+  Render*: a double-click script renders headless while Blender stays free.
+- **Start point cloud** from all model vertices plus surface points, in the material colours; a
+  GPU visibility filter drops hidden inner parts.
 - **Auto scale** with the factor recorded in `<vNNN>_gcapture_export.json` next to the dataset, so a
   trained splat can be placed back onto the model.
 

@@ -4094,7 +4094,8 @@ _GCAPTURE_WT_STEPS = [
                 "Object on a ground: turn on Upper Hemisphere Only. "
                 "Floating object: leave it off - the full sphere also sees "
                 "it from below.",
-                "Press Create / Update Camera Sphere."],
+                "Keep Build Cameras on This Sphere on and press Create / "
+                "Update Camera Sphere."],
          check="the sphere surrounds the model; the status line shows the "
                "number of cameras.",
          note=["Framing Margin adds room around the model; 1.0 fills the "
@@ -4131,11 +4132,15 @@ _GCAPTURE_WT_STEPS = [
          steps=["Check the Resolution and confirm it with OK - or change "
                 "it.",
                 "Check the render output in the box below.",
-                "Press Render Cycles (exact, slower) or Render EEVEE (much "
-                "faster, lighting approximated) - rendering starts at once. "
-                "Or render the saved scene on a render farm."],
+                "Press Render EEVEE (much faster, lighting approximated) or "
+                "Render Cycles (exact path tracing, slower) - rendering "
+                "starts at once; Esc cancels."],
          check="the status line shows all images found.",
-         note=["A change of the resolution applies at once."]),
+         note=["Command Line Render: the buttons save the scene and write a "
+               "script next to it - double-click it to render headless; "
+               "Blender stays free.",
+               "Render farm: render the saved scene there.",
+               "A change of the resolution applies at once."]),
     dict(title="7. COLMAP Export", badge='gcapture_6', icon='EXPORT',
          draw=_gcapture_draw_export, status=_gcapture_wt_status_export,
          goal="Writes the cameras, their poses and a start point cloud into "
@@ -4148,7 +4153,9 @@ _GCAPTURE_WT_STEPS = [
                 "Open <Name>_COLMAP/<vNNN> in Postshot or LichtFeld Studio "
                 "and start training."],
          check="the status line shows \"Dataset written\".",
-         note=["Copy/Move only appear if you render into your own folder "
+         note=["The settings are grouped into Dataset, Start Points and "
+               "Scale & Axes; the defaults fit most models.",
+               "Copy/Move only appear if you render into your own folder "
                "structure."]),
 ]
 

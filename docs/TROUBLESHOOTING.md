@@ -40,6 +40,17 @@ the dataset folder.
 every `.json` inside the dataset folder as a camera file. The add-on writes its info file next to
 the dataset, never inside – if a `.json` ended up in the dataset folder, move it out.
 
+**Render EEVEE / Render Cycles is greyed out.** Save the scene first (step 5, *Save Scene
+Version*) – the render goes into the dataset folder of this version.
+
+**The command line script closes at once or finds no Blender.** It calls the Blender that wrote it.
+If you moved or uninstalled that Blender, write the script again with *Write EEVEE .cmd* /
+*Write Cycles .cmd*.
+
+**Blender 4.1: "OpenImageDenoise error … PI_ERROR_INVALID_VALUE".** A problem of Blender 4.1 with
+current Intel graphics drivers. With an NVIDIA card the add-on switches Cycles to the OptiX
+denoiser; otherwise use Blender 4.2 or later.
+
 **The splat looks noisy in Blender 5.3 EEVEE.** See [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
 **Training in LichtFeld has reached the maximum number of splats – is more training useful?** Yes.

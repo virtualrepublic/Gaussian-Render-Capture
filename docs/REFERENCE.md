@@ -57,30 +57,45 @@ preset off when you render into a folder of your own.
 | Setting | Default | What it does |
 |---|---|---|
 | Resolution (square) | 1000 | Render resolution in pixels, width = height; applied at once. Confirm once with **OK**. |
-| **Render Cycles** | – | Starts rendering: one image per camera into the dataset with Cycles on the GPU and the settings of *Prepare Scene*. Exact, slower. |
-| **Render EEVEE** | – | The same with EEVEE: much faster, lighting approximated. The first time it applies a capture preset (256 samples, ray tracing and fast GI at full resolution, soft shadows, overscan); your later changes are kept. |
-| Command Line Render | off | Headless: the buttons read *Write Cycles .cmd* / *Write EEVEE .cmd* (`.command` on macOS, `.sh` on Linux): they save the scene and write a double-click script next to it (`<Scene>_render_cycles.cmd` / `_eevee`; `.command` on macOS, `.sh` on Linux) that renders headless with the same Blender version. |
+| **Render EEVEE** | – | Starts rendering: one image per camera into the dataset with EEVEE – much faster, lighting approximated. The first time it applies a capture preset (256 samples, ray tracing and fast GI at full resolution, soft shadows, overscan); your later changes are kept. |
+| **Render Cycles** | – | The same with Cycles on the GPU and the settings of *Prepare Scene*: exact path tracing, slower. |
+| Command Line Render | off | Headless: the buttons read *Write EEVEE .cmd* / *Write Cycles .cmd*. They save the scene and write a double-click script next to it (`<Scene>_render_eevee.cmd` / `_cycles`; `.command` on macOS, `.sh` on Linux) that renders with the same Blender version, without its interface. |
 
 Under *Advanced → Render Setup* (keep on for a capture): Step per Frame (constant keyframes), Set as
 Active Camera, Set Scene Frame Range, Set Render Resolution. They apply at once and on every Build.
 
 ## 7. COLMAP Export
 
+**Dataset**
+
 | Setting | Default | What it does |
 |---|---|---|
 | Output Folder | `//<Name>_COLMAP/<vNNN>/` | Dataset folder; follows the loaded version. Enter your own to override. |
 | Image Folder | folder of the render output | Where the rendered images are; follows the render output. |
-| Point Source | Look Target Collections | Where the start points come from: the look-target collections, all visible meshes, or named objects. |
-| Auto Scale / Target Radius | on / 3.0 | Scales the dataset so the cameras are on average 3 units from the centre (Postshot densifies very small or large scenes badly). The factor goes into `<vNNN>_gcapture_export.json` next to the dataset folder. |
-| Use Vertex Count | on | Every vertex of the model becomes a start point. Off: set *Max Points* yourself. |
-| Point Color | Material Base Color | Colour of the start points, face points included: the material base colour, a vertex colour layer, or grey. |
 | Images | Don't include | Only with your own render folder: *Copy* or *Move* the images into the dataset. |
-| Z-up → Y-up | on | Converts Blender's axes to the Y-up convention of the trainers. |
-| Visibility Filter | Visible Only | Drops points no camera can see (GPU depth maps); Esc cancels. |
+
+**Start Points**
+
+| Setting | Default | What it does |
+|---|---|---|
+| Point Source | Look Target Collections | Where the start points come from: the look-target collections, all visible meshes, or named objects. |
+| Use Vertex Count | on | Every vertex of the model becomes a start point. Off: set *Max Points* yourself. |
 | Add Random Face Points / Face Points | on / 10 % | Extra points spread over the surfaces, as a share of the vertex points. |
+| Visibility Filter | Visible Only | Drops points no camera can see (GPU depth maps); Esc cancels. |
+| Point Color | Material Base Color | Colour of the start points, face points included: the material base colour, a vertex colour layer, or grey. |
 | Crop Point Cloud | off | Keeps only points inside the bounds of a chosen object (plus margin). |
 | Reuse Point Cloud | on | Copies the last point cloud if nothing that affects it has changed. |
-| **Export COLMAP (Postshot / LichtFeld)** | – | Writes `sparse/0/` and, if chosen, the images into the dataset, and `<vNNN>_gcapture_export.json` next to it. |
+
+**Scale & Axes**
+
+| Setting | Default | What it does |
+|---|---|---|
+| Auto Scale / Target Radius | on / 3.0 | Scales the dataset so the cameras are on average 3 units from the centre (Postshot densifies very small or large scenes badly). The factor goes into `<vNNN>_gcapture_export.json` next to the dataset folder. |
+| Z-up → Y-up | on | Converts Blender's axes to the Y-up convention of the trainers. |
+
+| Button | What it does |
+|---|---|
+| **Export COLMAP (Postshot / LichtFeld)** | Writes `sparse/0/` and, if chosen, the images into the dataset, and `<vNNN>_gcapture_export.json` next to it. While it runs, a progress bar replaces the button; Esc cancels. |
 
 ## Advanced
 
