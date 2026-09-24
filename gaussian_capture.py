@@ -3772,7 +3772,7 @@ def _gcapture_draw_render(layout, context):
                       depress=pending and not eevee)
     op.engine = 'CYCLES'
     op = row.operator("gcapture.render_images", text=t_eev,
-                      icon='CONSOLE' if s.render_headless else 'SHADING_SOLID',
+                      icon='CONSOLE' if s.render_headless else 'SHADING_TEXTURE',
                       depress=pending and eevee)
     op.engine = 'EEVEE'
     rcol.prop(s, "render_headless")
