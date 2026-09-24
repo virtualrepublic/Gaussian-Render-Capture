@@ -9,9 +9,12 @@ documentation changes are not.
 
 - *Build Camera Animation* sizes the camera in the viewport to the sphere (10 % of its radius)
   instead of Blender's 1 m, which hid small models – unless you changed the size yourself.
-- Step 6 renders the images itself: **Cycles** (exact path tracing, settings of *Prepare Scene*)
-  or **EEVEE** (much faster, lighting approximated; a capture preset is applied once – ray tracing
+- Step 6 renders the images itself: **Render Cycles** (exact path tracing, settings of *Prepare Scene*)
+  or **Render EEVEE** (much faster, lighting approximated; a capture preset is applied once – ray tracing
   and fast GI at full resolution, soft shadows, overscan, 256 samples). Esc cancels.
+- *Render in Background (script)*: instead of rendering in Blender, the buttons save the scene and
+  write a double-click script next to it that renders headless with the same Blender version
+  (`.cmd` on Windows, `.command` on macOS, `.sh` on Linux).
 - Blender 4.1 with OptiX: Cycles denoises with OptiX – OpenImageDenoise fails there on systems
   with a current Intel graphics driver.
 

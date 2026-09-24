@@ -209,9 +209,14 @@ adjustments – the panel shows a red warning and Build asks before it does so.
 1. Check the **Resolution** and confirm it with **OK** – or change it (example: 3840 px).
 2. Check the render output: the box says `Renders go to Beetle_COLMAP\v001\images`. The guide has
    opened the **Output** tab, where you see the same path.
-3. Render the images: press **Cycles** (exact path tracing, slower) or **EEVEE** (much faster,
+3. Render the images: press **Render Cycles** (exact path tracing, slower) or **Render EEVEE** (much faster,
    lighting approximated). Blender's render window shows the progress; **Esc** cancels. On a
    render farm, render the saved scene there instead.
+
+   *Render in Background (script)*: with this option the buttons read **Script Cycles** /
+   **Script EEVEE**; they save the scene and write a
+   script next to it, e.g. `Beetle_v001_render_cycles.cmd`. Double-click it to render without
+   Blender's interface – Blender stays free, and the render goes on when you close Blender.
 
 **Check:** the status line turns green: *All 320 images found in 'images'*.
 

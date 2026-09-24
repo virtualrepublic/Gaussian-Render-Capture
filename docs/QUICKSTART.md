@@ -13,7 +13,7 @@ The shortest way from a model to a Gaussian Splat. Each line is one click or one
 | 6 | Object on a ground: **Group & Align to Ground** – floating object: **Next** | *Grouped under 'GCapture_Group'* |
 | 7 | Subdivisions 3, **Create / Update Camera Sphere** (on a ground: *Upper Hemisphere Only*) | *Camera_Sphere: 320 cameras* |
 | 8 | **Build Camera Animation**, save as `<Name>_v001.blend` | *320 camera poses* |
-| 9 | Resolution **OK**, then **Cycles** (or **EEVEE**, faster) | *All 320 images found* |
+| 9 | Resolution **OK**, then **Render Cycles** (or **Render EEVEE**, faster) | *All 320 images found* |
 | 10 | **Export COLMAP (Postshot / LichtFeld)** | *Dataset written* |
 | 11 | Open `<Name>_COLMAP/v001` in Postshot or LichtFeld Studio and train | the splat |
 

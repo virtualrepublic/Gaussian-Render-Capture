@@ -60,6 +60,7 @@ import bpy
 import bmesh
 import os
 import shutil
+import sys
 import re
 import math
 import time
@@ -525,6 +526,21 @@ class GCAPTURE_Settings(PropertyGroup):
                     "center (no views from below). Saves frames; good for "
                     "objects on a ground/water plane",
         default=False,
+    )
+    render_headless: BoolProperty(
+        name="Render in Background (script)",
+        description="Cycles / EEVEE save the scene and write a script next "
+                    "to it instead of rendering here. Double-click the script "
+                    "to render all cameras without Blender's interface - "
+                    "Blender stays free, and the render goes on when Blender "
+                    "is closed",
+        default=False,
+    )
+    render_script: StringProperty(
+        name="Render Script",
+        description="Last headless render script written",
+        default="",
+        subtype='FILE_PATH',
     )
     sph_set_as_guide: BoolProperty(
         name="Build Cameras on This Sphere",
@@ -3160,11 +3176,29 @@ class GCAPTURE_OT_render_images(Operator):
             os.makedirs(out, exist_ok=True)
         return None
 
+    def _write_script(self, context):
+        """Szene speichern, daneben ein Skript fuer das Rendern ohne
+        Oberflaeche schreiben (v1.1.5). Rueckgabe: Pfad des Skripts."""
+        scene = context.scene
+        dtype = None
+        if self.engine == 'CYCLES':
+            dtype, _ = _gcapture_setup_gpu()
+        bpy.ops.wm.save_mainfile()
+        path = _gcapture_write_render_script(
+            bpy.data.filepath, self.engine, dtype, bpy.app.binary_path)
+        scene.gcapture_settings.render_script = path
+        return path
+
     def invoke(self, context, event):
         err = self._prepare(context)
         if err:
             self.report({'ERROR'}, err)
             return {'CANCELLED'}
+        if context.scene.gcapture_settings.render_headless:
+            path = self._write_script(context)
+            self.report({'INFO'}, "Scene saved; double-click %s to render"
+                        % os.path.basename(path))
+            return {'FINISHED'}
         # Blenders Renderfenster mit Fortschritt; Esc bricht ab.
         bpy.ops.render.render('INVOKE_DEFAULT', animation=True)
         return {'FINISHED'}
@@ -3174,8 +3208,53 @@ class GCAPTURE_OT_render_images(Operator):
         if err:
             self.report({'ERROR'}, err)
             return {'CANCELLED'}
+        if context.scene.gcapture_settings.render_headless:
+            self._write_script(context)
+            return {'FINISHED'}
         bpy.ops.render.render(animation=True)
         return {'FINISHED'}
+
+
+def _gcapture_write_render_script(blend, engine, dtype, blender):
+    """Doppelklick-Skript neben der Szene: rendert alle Frames im Hintergrund
+    mit derselben Blender-Version. Windows .cmd, macOS .command, sonst .sh."""
+    folder, name = os.path.split(blend)
+    stem = os.path.splitext(name)[0]
+    eng = "cycles" if engine == 'CYCLES' else "eevee"
+    tail = ["--", "--cycles-device", dtype] if (engine == 'CYCLES' and dtype) else []
+    if sys.platform.startswith("win"):
+        path = os.path.join(folder, "%s_render_%s.cmd" % (stem, eng))
+        args = " ".join(tail)
+
+        def q(s):
+            return '"%s"' % s.replace("%", "%%")
+        text = "\r\n".join([
+            "@echo off",
+            "rem Gaussian Render Capture - headless render of %s (%s)" % (name, eng),
+            "rem Renders every camera into the dataset folder. Close this window to cancel.",
+            'cd /d "%~dp0"',
+            "%s -b %s -a %s" % (q(blender), q(name), args),
+            "echo.",
+            "echo Finished - press any key to close.",
+            "pause > nul",
+            ""])
+        with open(path, "w", encoding="utf-8", newline="") as f:
+            f.write(text)
+    else:
+        ext = "command" if sys.platform == "darwin" else "sh"
+        path = os.path.join(folder, "%s_render_%s.%s" % (stem, eng, ext))
+        import shlex
+        text = "\n".join([
+            "#!/bin/sh",
+            "# Gaussian Render Capture - headless render of %s (%s)" % (name, eng),
+            "# Renders every camera into the dataset folder. Ctrl+C cancels.",
+            'cd "$(dirname "$0")"',
+            " ".join([shlex.quote(blender), "-b", shlex.quote(name), "-a"] + tail),
+            ""])
+        with open(path, "w", encoding="utf-8", newline="\n") as f:
+            f.write(text)
+        os.chmod(path, 0o755)
+    return path
 
 
 class GCAPTURE_OT_confirm_resolution(Operator):
@@ -3681,16 +3760,20 @@ def _gcapture_draw_render(layout, context):
     rcol.enabled = bool(bpy.data.filepath)
     row = rcol.row(align=True)
     row.scale_y = 1.4
-    op = row.operator("gcapture.render_images", text="Cycles",
-                      icon='SHADING_RENDERED', depress=pending and not eevee)
+    # Beschriftung sagt, was der Klick tut: rendern oder Skript schreiben.
+    verb = "Script" if s.render_headless else "Render"
+    op = row.operator("gcapture.render_images", text="%s Cycles" % verb,
+                      icon='CONSOLE' if s.render_headless else 'SHADING_RENDERED',
+                      depress=pending and not eevee)
     op.engine = 'CYCLES'
-    op = row.operator("gcapture.render_images", text="EEVEE",
-                      icon='SHADING_SOLID', depress=pending and eevee)
+    op = row.operator("gcapture.render_images", text="%s EEVEE" % verb,
+                      icon='CONSOLE' if s.render_headless else 'SHADING_SOLID',
+                      depress=pending and eevee)
     op.engine = 'EEVEE'
-    hint = rcol.column(align=True)
-    hint.scale_y = 0.8
-    hint.label(text="Cycles: exact, slower. EEVEE: much faster,")
-    hint.label(text="lighting approximated. Esc cancels.")
+    rcol.prop(s, "render_headless")
+    if s.render_headless and s.render_script:
+        rcol.label(text="Double-click: %s" % os.path.basename(s.render_script),
+                   icon='CONSOLE')
     if not s.wt_active:
         layout.label(text="Render farm: render the saved scene there.",
                      icon='INFO')
@@ -4043,9 +4126,9 @@ _GCAPTURE_WT_STEPS = [
          steps=["Check the Resolution and confirm it with OK - or change "
                 "it.",
                 "Check the render output in the box below.",
-                "Render the images: Cycles (exact, slower) or EEVEE (much "
-                "faster, lighting approximated) - or render the saved scene "
-                "on a render farm."],
+                "Press Render Cycles (exact, slower) or Render EEVEE (much "
+                "faster, lighting approximated) - rendering starts at once. "
+                "Or render the saved scene on a render farm."],
          check="the status line shows all images found.",
          note=["A change of the resolution applies at once."]),
     dict(title="7. COLMAP Export", badge='gcapture_6', icon='EXPORT',
