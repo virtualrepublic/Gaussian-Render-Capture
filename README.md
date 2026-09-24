@@ -4,6 +4,8 @@ A Blender add-on that turns a 3D model into a ready-to-train dataset for Gaussia
 It places cameras on a sphere around your model, renders one image per camera and exports
 a COLMAP dataset – images, exact camera poses and a start point cloud – for
 [Postshot](https://www.jawset.com/) and [LichtFeld Studio](https://github.com/MrNeRF/LichtFeld-Studio).
+It started from [Gauss Cannon](https://github.com/warpgatelabs/gauss-cannon) by Arash Keshmirian –
+thanks for the impulse.
 
 ![Camera sphere around the model and one of the rendered views](docs/images/B00_overview.png)
 
@@ -60,6 +62,12 @@ On macOS use a trainer that reads COLMAP datasets.
 remove *Gaussian Render Scan*, then install `gaussian_capture.py`. Scenes made with it are taken
 over automatically when you open them (settings, camera sphere, live adjustments); save them to
 keep the new names.
+
+## Related projects
+
+- **[Gauss Cannon](https://github.com/warpgatelabs/gauss-cannon)** by Arash Keshmirian (Warpgate
+  Labs) – the add-on this one started from. Camera paths from helper meshes, a ray-traced coloured
+  point cloud and camera export for LichtFeld Studio and Postshot.
 
 ## Licence and credits
 
