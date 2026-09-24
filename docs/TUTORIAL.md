@@ -221,6 +221,29 @@ adjustments – the panel shows a red warning and Build asks before it does so.
    Blender stays free, and the render goes on when you close Blender. On macOS the script is a
    `.command`, on Linux a `.sh`.
 
+<details><summary>How does Command Line Render work – on Windows, macOS and Linux?</summary>
+
+The script starts Blender without its interface:
+`blender -b <Scene>.blend -a` (plus `-- --cycles-device <GPU>` for Cycles).
+`-b` loads the scene in the background, `-a` renders the whole animation with the frame range,
+engine, resolution and output path **of the saved file** – that is why the buttons save first.
+The terminal shows the progress frame by frame; **Ctrl+C** cancels. The script calls exactly the
+Blender that wrote it, so it runs on the system where it was written.
+
+- **Windows** – double-click the `.cmd`. The window stays open at the end until you press a key.
+- **macOS** – double-click the `.command`; the Finder runs it in the Terminal. Cycles and EEVEE
+  render through Metal, no display needed. The first time, macOS may refuse a file from an
+  unidentified developer: right-click → *Open* and confirm once.
+- **Linux** – double-click the `.sh` if your file manager may run scripts, otherwise run
+  `./<Scene>_render_eevee.sh` in a terminal. Cycles also renders on a machine without a display
+  (e.g. over SSH). EEVEE needs a graphics session; on a server without a display start it through
+  a virtual one: `xvfb-run -a ./<Scene>_render_eevee.sh`. To keep it running after you log out:
+  `nohup ./<Scene>_render_cycles.sh &`.
+
+If Blender's interface stays open during the render, both share the graphics card and its memory –
+for large scenes close the interface.
+</details>
+
 **Check:** the status line turns green: *All 320 images found in 'images'*.
 
 <img src="images/B13_dataset_image.png" alt="One rendered view">

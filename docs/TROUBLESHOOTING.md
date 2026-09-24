@@ -47,6 +47,17 @@ Version*) – the render goes into the dataset folder of this version.
 If you moved or uninstalled that Blender, write the script again with *Write EEVEE .cmd* /
 *Write Cycles .cmd*.
 
+**macOS: "cannot be opened because it is from an unidentified developer".** The `.command` script
+was written on your Mac but not signed. Right-click it → *Open* and confirm once; afterwards a
+double-click works.
+
+**Linux: a double-click opens the script in a text editor.** Your file manager does not run
+scripts. Run it in a terminal: `./<Scene>_render_eevee.sh` – or allow running executable text
+files in the file manager's preferences.
+
+**Linux server: the EEVEE script fails without a display.** EEVEE needs a graphics session. Start
+it through a virtual display: `xvfb-run -a ./<Scene>_render_eevee.sh`. Cycles runs without one.
+
 **Blender 4.1: "OpenImageDenoise error … PI_ERROR_INVALID_VALUE".** A problem of Blender 4.1 with
 current Intel graphics drivers. With an NVIDIA card the add-on switches Cycles to the OptiX
 denoiser; otherwise use Blender 4.2 or later.
