@@ -2,36 +2,28 @@
 
 All notable changes to this project are documented here. The project follows
 [Semantic Versioning](https://semver.org/): PATCH for fixes, MINOR for new features, MAJOR for
-changes that break existing scenes or settings.
+changes that break existing scenes or settings. Only changes to the add-on itself are listed;
+documentation changes are not.
 
 ## [1.1.4] – 2026-09-24
 
 - Progress of *Build Camera Animation* and *Export COLMAP* is shown as a progress bar in the
   panel, in place of the button (guide and normal panel), instead of the viewport header.
   While they run, all other settings and the guide navigation are locked; Esc cancels.
-- README: maintainer credits on three lines, with links to the course and the university.
-- Transparency note: "has worked in CGI since 1987" instead of "many years of experience".
-- README: Linux and macOS are covered only by the automated test suite on GitHub's virtual test
-  machines, not yet on physical computers – stated explicitly.
 
 ## [1.1.3] – 2026-09-24
 
 - COLMAP export: focal length and principal point now follow Blender's camera model in every
   case – non-square pixel aspect and lens shift with an explicit sensor fit were off before.
-  The normal workflow (square images, square pixels) was already exact. New test: 162 camera
-  setups against Blender's own projection.
-- Maintainer's LinkedIn profile linked in the README and the panel.
+  The normal workflow (square images, square pixels) was already exact.
 
 ## [1.1.2] – 2026-09-24
 
-- Transparency note made precise: the author is not a programmer but a CGI professional; the
-  add-on was developed entirely through vibe coding with Claude Code (README, tutorial, file
-  header, add-on description, panel).
+No functional changes.
 
 ## [1.1.1] – 2026-09-24
 
-- Credits: Gauss Cannon is by Arash Keshmirian (Warpgate Labs) – his name and copyright for the
-  adapted ray-casting helpers added to the file header, the panel, README and THIRD_PARTY.md.
+No functional changes.
 
 ## [1.1.0] – 2026-09-23
 
@@ -44,17 +36,14 @@ and does not scan anything real.
   `gaussian_capture.py`. Scenes made with 1.0.x are taken over when opened – all settings, the
   markers of steps 1 and 5, the camera fit and live adjustments; save the scene to keep the new
   names. Exporting such a dataset again replaces `<vNNN>_gscan_export.json` with the new file.
-- Tests: Linux, macOS and Windows with Blender 4.1 and 5.2, including the takeover of a 1.0.2 scene.
 
 ## [1.0.2] – 2026-09-23
 
-- Documentation: Linux (Ubuntu) and macOS (Apple Silicon) now tested with the automated test
-  suite on Blender 4.1 and 5.2 – all tests pass, including the GPU visibility filter.
+No functional changes.
 
 ## [1.0.1] – 2026-09-23
 
-- Documentation: supported platforms stated precisely – tested on Windows 11; Linux and macOS
-  expected to work but not tested yet. Which trainer runs on which system.
+No functional changes.
 
 ## [1.0.0] – 2026-09-23
 
@@ -76,4 +65,4 @@ First public release.
 - **7 COLMAP Export** – cameras, poses and a start point cloud from all model vertices plus surface
   points; GPU visibility filter; crop box; reuse of an unchanged point cloud; auto scale with the
   factor in `<vNNN>_gscan_export.json`; works with Postshot and LichtFeld Studio.
-- Blender 4.1 or later; tested on 4.1, 4.4, 4.5, 5.0, 5.2 and 5.3.
+- Requires Blender 4.1 or later.
