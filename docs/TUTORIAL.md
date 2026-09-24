@@ -313,6 +313,6 @@ See also: [Quick start](QUICKSTART.md) · [Reference of all settings](REFERENCE.
 
 ---
 
-*Transparency note on the use of AI: this tutorial and the add-on were developed with Anthropic
-Claude (Claude Code) as a programming and writing assistant; concept, decisions, tests and
-acceptance by the author.*
+*Transparency note on the use of AI: the author is not a programmer but has many years of
+experience in CGI. The add-on and this tutorial were developed entirely through vibe coding with
+Anthropic Claude (Claude Code); concept, decisions, tests and acceptance by the author.*

@@ -84,10 +84,11 @@ Mediadesign University of Applied Sciences ·
 [mediadesign.de](https://www.mediadesign.de) · [virtualrepublic.org](https://www.virtualrepublic.org) ·
 [renderbricks.com](https://www.renderbricks.com)
 
-**Transparency note on the use of AI:** the add-on, its tests and this documentation were
-developed with Anthropic Claude (Claude Code) as a programming and writing assistant. The concept,
-the design decisions, the tests in Blender, Postshot and LichtFeld Studio and the acceptance of
-every version are the author's; he is responsible for the content.
+**Transparency note on the use of AI:** the author is not a programmer but has many years of
+experience in CGI. The add-on was developed entirely through vibe coding with Anthropic Claude
+(Claude Code): Claude wrote the code, the tests and this documentation from his descriptions. The
+concept, the design decisions, the tests in Blender, Postshot and LichtFeld Studio and the
+acceptance of every version are the author's; he is responsible for the content.
 
 LEGO® is a trademark of the LEGO Group; this and all other trademarks named here belong to their
 owners, none of whom sponsors, authorises or endorses this project (see [THIRD_PARTY.md](THIRD_PARTY.md)).

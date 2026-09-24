@@ -29,9 +29,11 @@ Mediadesign University of Applied Sciences
     https://www.mediadesign.de  https://www.virtualrepublic.org
     https://www.renderbricks.com
 
-Transparency note on the use of AI: developed with Anthropic Claude
-(Claude Code) as a programming, testing and writing assistant. Concept,
-design decisions, tests and the acceptance of every version: the author.
+Transparency note on the use of AI: the author is not a programmer but
+has many years of experience in CGI. The add-on was developed entirely
+through vibe coding with Anthropic Claude (Claude Code), which wrote the
+code and the tests. Concept, design decisions, tests and the acceptance
+of every version: the author.
 
 Code comments are in German.
 =========================================================================
@@ -40,12 +42,12 @@ Code comments are in German.
 bl_info = {
     "name": "Gaussian Render Capture",
     "author": "Prof. Michael Klein - Mediadesign University of Applied Sciences",
-    "version": (1, 1, 1),
+    "version": (1, 1, 2),
     "blender": (4, 1, 0),
     "location": "View3D > Sidebar (N) > Gaussian Render Capture",
     "description": "Synthetic COLMAP datasets for Gaussian Splatting: camera "
                    "sphere, render, export for Postshot / LichtFeld. "
-                   "Developed with Anthropic Claude as AI assistant",
+                   "Vibe-coded with Anthropic Claude (Claude Code)",
     "doc_url": "https://github.com/virtualrepublic/Gaussian-Render-Capture",
     "tracker_url": "https://github.com/virtualrepublic/Gaussian-Render-Capture/issues",
     "license": ["SPDX:GPL-3.0-or-later"],
@@ -4216,8 +4218,9 @@ class GCAPTURE_PT_advanced(_GCAPTURE_SubPanel, Panel):
             op = lrow.operator("wm.url_open", text=url, icon='URL',
                                emboss=False)
             op.url = "https://" + url
-        foot.label(text="Developed with Anthropic Claude")
-        foot.label(text="as AI assistant (Claude Code)")
+        foot.label(text="Vibe-coded with Anthropic Claude")
+        foot.label(text="(Claude Code) - not a programmer,")
+        foot.label(text="a CGI artist")
         foot.label(text="GPL-3.0-or-later")
         foot.label(text="Started from Gauss Cannon by Arash")
         foot.label(text="Keshmirian (Warpgate Labs); its")

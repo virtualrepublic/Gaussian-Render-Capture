@@ -4,6 +4,12 @@ All notable changes to this project are documented here. The project follows
 [Semantic Versioning](https://semver.org/): PATCH for fixes, MINOR for new features, MAJOR for
 changes that break existing scenes or settings.
 
+## [1.1.2] – 2026-09-24
+
+- Transparency note made precise: the author is not a programmer but a CGI professional; the
+  add-on was developed entirely through vibe coding with Claude Code (README, tutorial, file
+  header, add-on description, panel).
+
 ## [1.1.1] – 2026-09-24
 
 - Credits: Gauss Cannon is by Arash Keshmirian (Warpgate Labs) – his name and copyright for the
