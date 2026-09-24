@@ -32,7 +32,7 @@ Maintainer: Prof. Michael Klein
     https://www.linkedin.com/in/virtualrepublic/
 
 Transparency note on the use of AI: the author is not a programmer but
-has many years of experience in CGI. The add-on was developed entirely
+has worked in CGI since 1987. The add-on was developed entirely
 through vibe coding with Anthropic Claude (Claude Code), which wrote the
 code and the tests. Concept, design decisions, tests and the acceptance
 of every version: the author.

@@ -10,6 +10,7 @@ changes that break existing scenes or settings.
   panel, in place of the button (guide and normal panel), instead of the viewport header.
   While they run, all other settings and the guide navigation are locked; Esc cancels.
 - README: maintainer credits on three lines, with links to the course and the university.
+- Transparency note: "has worked in CGI since 1987" instead of "many years of experience".
 
 ## [1.1.3] – 2026-09-24
 
