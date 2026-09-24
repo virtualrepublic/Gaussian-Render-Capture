@@ -3767,14 +3767,14 @@ def _gcapture_draw_render(layout, context):
         t_cyc, t_eev = "Write Cycles " + ext, "Write EEVEE " + ext
     else:
         t_cyc, t_eev = "Render Cycles", "Render EEVEE"
-    op = row.operator("gcapture.render_images", text=t_cyc,
-                      icon='CONSOLE' if s.render_headless else 'SHADING_RENDERED',
-                      depress=pending and not eevee)
-    op.engine = 'CYCLES'
     op = row.operator("gcapture.render_images", text=t_eev,
                       icon='CONSOLE' if s.render_headless else 'SHADING_TEXTURE',
                       depress=pending and eevee)
     op.engine = 'EEVEE'
+    op = row.operator("gcapture.render_images", text=t_cyc,
+                      icon='CONSOLE' if s.render_headless else 'SHADING_RENDERED',
+                      depress=pending and not eevee)
+    op.engine = 'CYCLES'
     rcol.prop(s, "render_headless")
     if s.render_headless and s.render_script:
         rcol.label(text="Double-click: %s" % os.path.basename(s.render_script),
