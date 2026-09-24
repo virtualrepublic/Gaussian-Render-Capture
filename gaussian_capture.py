@@ -2332,6 +2332,18 @@ class GCAPTURE_OT_build(Operator):
         if self._total == 0:
             raise RuntimeError("Guides have no faces.")
 
+        # Anzeigegroesse der Kamera im Viewport passend zur Sphere (v1.1.5):
+        # Blenders 1 m verdeckt kleine Modelle. Nur solange der Nutzer sie
+        # nicht selbst gesetzt hat (Blender-Standard oder von uns gesetzt).
+        cam_data = self._cam.data
+        if (abs(cam_data.display_size - 1.0) < 1e-6
+                or cam_data.get("gcapture_display_auto")):
+            radius = max((max(g.dimensions) * 0.5 for g in self._guide_objs),
+                         default=0.0)
+            if radius > 0.0:
+                cam_data.display_size = max(radius * 0.1, 0.001)
+                cam_data["gcapture_display_auto"] = True
+
         # Interior-Erkennung vorbereiten (einmalig). Nur mit eigenen
         # Leitgittern wirksam: die Kamera-Sphere liegt immer ausserhalb des
         # Modells, dort wuerde der Test nur bremsen (v93).

@@ -7,7 +7,8 @@ documentation changes are not.
 
 ## [1.1.5] – unreleased
 
-No functional changes – texts in the add-on and the documentation were revised in content and form.
+- *Build Camera Animation* sizes the camera in the viewport to the sphere (10 % of its radius)
+  instead of Blender's 1 m, which hid small models – unless you changed the size yourself.
 
 ## [1.1.4] – 2026-09-24
 
