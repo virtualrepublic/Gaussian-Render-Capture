@@ -42,7 +42,7 @@ Code comments are in German.
 bl_info = {
     "name": "Gaussian Render Capture",
     "author": "Prof. Michael Klein - Mediadesign University of Applied Sciences",
-    "version": (1, 1, 2),
+    "version": (1, 1, 3),
     "blender": (4, 1, 0),
     "location": "View3D > Sidebar (N) > Gaussian Render Capture",
     "description": "Synthetic COLMAP datasets for Gaussian Splatting: camera "
@@ -4515,24 +4515,26 @@ def _exp_intrinsics(cam_data, scene, real_size=None):
         w = int(render.resolution_x * render.resolution_percentage / 100.0)
         h = int(render.resolution_y * render.resolution_percentage / 100.0)
 
-    sw = cam_data.sensor_width
-    sh = cam_data.sensor_height
-    # Brennweite (px) aus Lens/Sensor, skaliert auf die ECHTE Bildgroesse.
-    if cam_data.sensor_fit == 'VERTICAL':
-        fy = cam_data.lens * h / sh
-        fx = fy
-    elif cam_data.sensor_fit == 'HORIZONTAL':
-        fx = cam_data.lens * w / sw
-        fy = fx
-    else:  # AUTO -> laengere Pixelkante bestimmt die Sensorbreite
-        if w >= h:
-            fx = cam_data.lens * w / sw
-            fy = fx
-        else:
-            fy = cam_data.lens * h / sw
-            fx = fy
-    cx = w / 2.0 - cam_data.shift_x * max(w, h)
-    cy = h / 2.0 + cam_data.shift_y * max(w, h)
+    # Blenders Kameramodell (v1.1.3): Pixel-Seitenverhaeltnis, Sensor-Fit
+    # und Shift beziehen sich auf die effektive Bildgroesse (Pixel x Aspekt).
+    # Bei AUTO bestimmt die laengere effektive Kante, die Sensorbreite gilt.
+    pa_x = max(render.pixel_aspect_x, 1e-6)
+    pa_y = max(render.pixel_aspect_y, 1e-6)
+    size_x, size_y = w * pa_x, h * pa_y
+    fit = cam_data.sensor_fit
+    if fit == 'AUTO':
+        fit = 'HORIZONTAL' if size_x >= size_y else 'VERTICAL'
+        sensor = cam_data.sensor_width
+    elif fit == 'HORIZONTAL':
+        sensor = cam_data.sensor_width
+    else:
+        sensor = cam_data.sensor_height
+    view = size_x if fit == 'HORIZONTAL' else size_y
+    f_eff = cam_data.lens * view / sensor
+    fx = f_eff / pa_x
+    fy = f_eff / pa_y
+    cx = w / 2.0 - cam_data.shift_x * view / pa_x
+    cy = h / 2.0 + cam_data.shift_y * view / pa_y
     return fx, fy, cx, cy, w, h
 
 

@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The project follows
 [Semantic Versioning](https://semver.org/): PATCH for fixes, MINOR for new features, MAJOR for
 changes that break existing scenes or settings.
 
+## [1.1.3] – 2026-09-24
+
+- COLMAP export: focal length and principal point now follow Blender's camera model in every
+  case – non-square pixel aspect and lens shift with an explicit sensor fit were off before.
+  The normal workflow (square images, square pixels) was already exact. New test: 162 camera
+  setups against Blender's own projection.
+
 ## [1.1.2] – 2026-09-24
 
 - Transparency note made precise: the author is not a programmer but a CGI professional; the
