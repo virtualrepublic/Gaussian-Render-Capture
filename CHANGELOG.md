@@ -8,6 +8,7 @@ changes that break existing scenes or settings.
 
 - Progress of *Build Camera Animation* and *Export COLMAP* is shown as a progress bar in the
   panel, in place of the button (guide and normal panel), instead of the viewport header.
+  While they run, all other settings and the guide navigation are locked; Esc cancels.
 
 ## [1.1.3] – 2026-09-24
 

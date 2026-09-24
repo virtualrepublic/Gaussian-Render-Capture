@@ -2914,6 +2914,7 @@ def _gcapture_migrate_timer():
 
 @persistent
 def _gcapture_on_load_post(*args):
+    _GCAPTURE_PROGRESS.clear()   # ein neues File hat keinen laufenden Vorgang
     try:
         _gcapture_migrate_legacy()
     except Exception as exc:
@@ -3419,16 +3420,18 @@ def _gcapture_draw_sphere(layout, context):
 
 def _gcapture_draw_build(layout, context):
     s = context.scene.gcapture_settings
+    outer = layout
     if not s.wt_active:
-        layout.label(text="One keyframe per sphere face:")
-    if not _gcapture_progress_draw(layout, "gcapture.build_animation"):
-        brow = layout.row()
+        _gcapture_lock(outer).label(text="One keyframe per sphere face:")
+    if not _gcapture_progress_draw(outer, "gcapture.build_animation"):
+        brow = _gcapture_lock(outer).row()
         brow.scale_y = 1.4
         # Waehrend Live Camera Lock aktiv: Build gesperrt (erst Finish).
         brow.enabled = not s.live_lock
         _gcapture_action(brow, "gcapture.build_animation",
                     _gcapture_wt_status_build_poses(context, s)[0] != 'DONE',
                     'CON_CAMERASOLVER')
+    layout = _gcapture_lock(outer)
     if not s.live_lock and _sph_has_adjustments(s.sph_object):
         wrow = layout.row()
         wrow.alert = True
@@ -3518,6 +3521,8 @@ def _gcapture_draw_render(layout, context):
 
 def _gcapture_draw_export(layout, context):
     s = context.scene.gcapture_settings
+    outer = layout
+    layout = _gcapture_lock(outer)
     ecol = layout.column(align=True)
     # Bezeichnung ueber dem Feld: in der schmalen Seitenleiste wurde sie
     # sonst abgeschnitten, und der Pfad bekommt die volle Breite (v129).
@@ -3649,12 +3654,13 @@ def _gcapture_draw_export(layout, context):
                        icon='FILE_TICK')
         else:
             rrow.label(text="No stored point cloud yet", icon='INFO')
-    if not _gcapture_progress_draw(layout, "gcapture.export_colmap"):
-        erow2 = layout.row()
+    if not _gcapture_progress_draw(outer, "gcapture.export_colmap"):
+        erow2 = _gcapture_lock(outer).row()
         erow2.scale_y = 1.3
         _gcapture_action(erow2, "gcapture.export_colmap",
                     not _exp_output_has_export(_exp_resolve_output_dir(s)),
                     'EXPORT')
+    layout = _gcapture_lock(outer)
     if s.exp_last_points:
         rcol = layout.column(align=True)
         rcol.label(text="Last export: {:,} points".format(s.exp_last_points),
@@ -3914,7 +3920,10 @@ def _gcapture_wt_draw_text(layout, context, step):
 
 # Fortschritt langer Ablaeufe (Build, Export) im Panel an der Stelle des
 # Knopfs statt in der Kopfzeile des Viewports (v1.1.4). Nur zur Laufzeit.
-_GCAPTURE_PROGRESS = {}   # op_id -> (Anteil 0..1, Text)
+_GCAPTURE_PROGRESS = {}   # op_id -> (Anteil 0..1, Text, Zeitpunkt)
+# Aeltere Eintraege gelten als verwaist (Absturz ohne Aufraeumen) und
+# sperren das Panel nicht mehr.
+_GCAPTURE_PROGRESS_STALE = 60.0
 
 
 def _gcapture_redraw_viewports():
@@ -3928,7 +3937,8 @@ def _gcapture_redraw_viewports():
 
 
 def _gcapture_progress_set(op_id, factor, text):
-    _GCAPTURE_PROGRESS[op_id] = (max(0.0, min(1.0, float(factor))), text)
+    _GCAPTURE_PROGRESS[op_id] = (max(0.0, min(1.0, float(factor))), text,
+                                 time.time())
     _gcapture_redraw_viewports()
 
 
@@ -3937,10 +3947,25 @@ def _gcapture_progress_clear(op_id):
         _gcapture_redraw_viewports()
 
 
+def _gcapture_busy():
+    """True, solange Build oder Export laeuft (v1.1.4)."""
+    now = time.time()
+    return any(now - p[2] < _GCAPTURE_PROGRESS_STALE
+               for p in _GCAPTURE_PROGRESS.values())
+
+
+def _gcapture_lock(layout):
+    """Spalte, die waehrend eines Laufs gesperrt ist; der Fortschrittsbalken
+    selbst steht ausserhalb und bleibt lesbar."""
+    col = layout.column()
+    col.enabled = not _gcapture_busy()
+    return col
+
+
 def _gcapture_progress_draw(layout, op_id):
     """Zeichnet den Fortschritt von op_id, falls er laeuft -> True."""
     p = _GCAPTURE_PROGRESS.get(op_id)
-    if p is None:
+    if p is None or time.time() - p[2] >= _GCAPTURE_PROGRESS_STALE:
         return False
     col = layout.box().column()
     if hasattr(col, "progress"):
@@ -3982,7 +4007,10 @@ def _gcapture_draw_walkthrough(layout, context):
 
     _gcapture_wt_draw_text(card, context, step)
     card.separator()
-    step['draw'](card.column(), context)
+    if step['draw'] in (_gcapture_draw_build, _gcapture_draw_export):
+        step['draw'](card.column(), context)   # sperren selbst, Balken frei
+    else:
+        step['draw'](_gcapture_lock(card), context)
     card.separator()
 
     try:
@@ -3995,6 +4023,7 @@ def _gcapture_draw_walkthrough(layout, context):
 
     nav = card.row(align=True)
     nav.scale_y = 1.3
+    nav.enabled = not _gcapture_busy()
     back = nav.row(align=True)
     back.enabled = idx > 0
     op = back.operator("gcapture.walkthrough_nav", text="Back", icon='TRIA_LEFT')
@@ -4076,6 +4105,7 @@ class GCAPTURE_PT_panel(Panel):
         if s.wt_active:
             _gcapture_draw_walkthrough(layout, context)
             return
+        layout = _gcapture_lock(layout)
         row = layout.row()
         row.scale_y = 1.4
         row.operator("gcapture.walkthrough_start", icon='HELP')
@@ -4127,7 +4157,7 @@ class GCAPTURE_PT_camera(_GCAPTURE_SubPanel, Panel):
     gcapture_color = _GCAPTURE_COLOR_PREP
 
     def draw(self, context):
-        _gcapture_draw_camera(self.layout, context)
+        _gcapture_draw_camera(_gcapture_lock(self.layout), context)
 
 
 class GCAPTURE_PT_target(_GCAPTURE_SubPanel, Panel):
@@ -4139,7 +4169,7 @@ class GCAPTURE_PT_target(_GCAPTURE_SubPanel, Panel):
     gcapture_color = _GCAPTURE_COLOR_PREP
 
     def draw(self, context):
-        _gcapture_draw_target(self.layout, context)
+        _gcapture_draw_target(_gcapture_lock(self.layout), context)
 
 
 class GCAPTURE_PT_group(_GCAPTURE_SubPanel, Panel):
@@ -4151,7 +4181,7 @@ class GCAPTURE_PT_group(_GCAPTURE_SubPanel, Panel):
     gcapture_color = _GCAPTURE_COLOR_PREP
 
     def draw(self, context):
-        _gcapture_draw_group(self.layout, context)
+        _gcapture_draw_group(_gcapture_lock(self.layout), context)
 
 
 class GCAPTURE_PT_sphere(_GCAPTURE_SubPanel, Panel):
@@ -4163,7 +4193,7 @@ class GCAPTURE_PT_sphere(_GCAPTURE_SubPanel, Panel):
     gcapture_color = _GCAPTURE_COLOR_CAMERAS
 
     def draw(self, context):
-        _gcapture_draw_sphere(self.layout, context)
+        _gcapture_draw_sphere(_gcapture_lock(self.layout), context)
 
 
 class GCAPTURE_PT_build(_GCAPTURE_SubPanel, Panel):
@@ -4187,7 +4217,7 @@ class GCAPTURE_PT_render(_GCAPTURE_SubPanel, Panel):
     gcapture_color = _GCAPTURE_COLOR_OUTPUT
 
     def draw(self, context):
-        _gcapture_draw_render(self.layout, context)
+        _gcapture_draw_render(_gcapture_lock(self.layout), context)
 
 
 class GCAPTURE_PT_export(_GCAPTURE_SubPanel, Panel):
@@ -4211,7 +4241,7 @@ class GCAPTURE_PT_advanced(_GCAPTURE_SubPanel, Panel):
     bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
-        layout = self.layout
+        layout = _gcapture_lock(self.layout)
         s = context.scene.gcapture_settings
         # Eigene Kamera-Leitgitter statt/zusaetzlich zur Sphere (v93).
         glbox = layout.box()
