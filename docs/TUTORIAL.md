@@ -210,7 +210,9 @@ adjustments – the panel shows a red warning and Build asks before it does so.
 2. Check the render output: the box says `Renders go to Beetle_COLMAP\v001\images`. The guide has
    opened the **Output** tab, where you see the same path.
 3. Render the images: press **Render EEVEE** (much faster, lighting approximated) or
-   **Render Cycles** (exact path tracing, slower). Blender's render window shows the progress; **Esc** cancels. On a
+   **Render Cycles** (exact path tracing, slower). The button saves the scene first, so settings
+   you changed just before are kept; then Blender's render window shows the progress. **Esc**
+   cancels. On a
    render farm, render the saved scene there instead.
 
    *Command Line Render* (headless): with this option the buttons read **Write EEVEE .cmd** /

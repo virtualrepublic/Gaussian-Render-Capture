@@ -57,7 +57,7 @@ preset off when you render into a folder of your own.
 | Setting | Default | What it does |
 |---|---|---|
 | Resolution (square) | 1000 | Render resolution in pixels, width = height; applied at once. Confirm once with **OK**. |
-| **Render EEVEE** | – | Starts rendering: one image per camera into the dataset with EEVEE – much faster, lighting approximated. The first time it applies a capture preset (256 samples, ray tracing and fast GI at full resolution, soft shadows, overscan); your later changes are kept. |
+| **Render EEVEE** | – | Saves the scene, then starts rendering: one image per camera into the dataset with EEVEE – much faster, lighting approximated. The first time it applies a capture preset (256 samples, ray tracing and fast GI at full resolution, soft shadows, overscan); your later changes are kept. |
 | **Render Cycles** | – | The same with Cycles on the GPU and the settings of *Prepare Scene*: exact path tracing, slower. |
 | Command Line Render | off | Headless: the buttons read *Write EEVEE .cmd* / *Write Cycles .cmd*. They save the scene and write a double-click script next to it (`<Scene>_render_eevee.cmd` / `_cycles`; `.command` on macOS, `.sh` on Linux) that renders with the same Blender version, without its interface. |
 

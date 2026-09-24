@@ -3132,13 +3132,13 @@ class GCAPTURE_OT_render_images(Operator):
     @classmethod
     def description(cls, context, props):
         if props.engine == 'EEVEE':
-            return ("Render one image per camera into the dataset folder with "
-                    "EEVEE - much faster than Cycles, lighting approximated. "
-                    "The capture preset is applied once; later changes of "
-                    "yours are kept")
-        return ("Render one image per camera into the dataset folder with "
-                "Cycles on the GPU - exact path tracing, with the settings "
-                "of Prepare Scene")
+            return ("Save the scene, then render one image per camera into "
+                    "the dataset folder with EEVEE - much faster than Cycles, "
+                    "lighting approximated. The capture preset is applied "
+                    "once; later changes of yours are kept")
+        return ("Save the scene, then render one image per camera into the "
+                "dataset folder with Cycles on the GPU - exact path tracing, "
+                "with the settings of Prepare Scene")
 
     @classmethod
     def poll(cls, context):
@@ -3174,20 +3174,26 @@ class GCAPTURE_OT_render_images(Operator):
         out = os.path.dirname(bpy.path.abspath(scene.render.filepath))
         if out:
             os.makedirs(out, exist_ok=True)
+        if s.render_headless:
+            s.render_script = _gcapture_render_script_path(bpy.data.filepath,
+                                                           self.engine)
+        # Vor dem Rendern immer sichern (v1.1.5): Einstellungen, die kurz
+        # vorher noch geaendert wurden, gehen so nicht verloren; das Skript
+        # rendert ohnehin die gespeicherte Datei. bpy.data.is_dirty taugt
+        # nicht als Bedingung -- per Python gesetzte Werte (Engine, Preset)
+        # markiert Blender nicht als ungespeichert.
+        bpy.ops.wm.save_mainfile()
+        self._saved = True
         return None
 
     def _write_script(self, context):
-        """Szene speichern, daneben ein Skript fuer das Rendern ohne
-        Oberflaeche schreiben (v1.1.5). Rueckgabe: Pfad des Skripts."""
-        scene = context.scene
+        """Skript fuer das Rendern ohne Oberflaeche neben die (gerade
+        gesicherte) Szene schreiben (v1.1.5). Rueckgabe: Pfad."""
         dtype = None
         if self.engine == 'CYCLES':
             dtype, _ = _gcapture_setup_gpu()
-        bpy.ops.wm.save_mainfile()
-        path = _gcapture_write_render_script(
+        return _gcapture_write_render_script(
             bpy.data.filepath, self.engine, dtype, bpy.app.binary_path)
-        scene.gcapture_settings.render_script = path
-        return path
 
     def invoke(self, context, event):
         err = self._prepare(context)
@@ -3199,6 +3205,8 @@ class GCAPTURE_OT_render_images(Operator):
             self.report({'INFO'}, "Scene saved; double-click %s to render"
                         % os.path.basename(path))
             return {'FINISHED'}
+        if self._saved:
+            self.report({'INFO'}, "Scene saved - rendering")
         # Blenders Renderfenster mit Fortschritt; Esc bricht ab.
         bpy.ops.render.render('INVOKE_DEFAULT', animation=True)
         return {'FINISHED'}
@@ -3215,15 +3223,24 @@ class GCAPTURE_OT_render_images(Operator):
         return {'FINISHED'}
 
 
-def _gcapture_write_render_script(blend, engine, dtype, blender):
-    """Doppelklick-Skript neben der Szene: rendert alle Frames im Hintergrund
-    mit derselben Blender-Version. Windows .cmd, macOS .command, sonst .sh."""
+def _gcapture_render_script_path(blend, engine):
+    """Pfad des Render-Skripts neben der Szene, je Engine und System."""
     folder, name = os.path.split(blend)
     stem = os.path.splitext(name)[0]
     eng = "cycles" if engine == 'CYCLES' else "eevee"
+    ext = ("cmd" if sys.platform.startswith("win") else
+           "command" if sys.platform == "darwin" else "sh")
+    return os.path.join(folder, "%s_render_%s.%s" % (stem, eng, ext))
+
+
+def _gcapture_write_render_script(blend, engine, dtype, blender):
+    """Doppelklick-Skript neben der Szene: rendert alle Frames im Hintergrund
+    mit derselben Blender-Version. Windows .cmd, macOS .command, sonst .sh."""
+    name = os.path.basename(blend)
+    eng = "cycles" if engine == 'CYCLES' else "eevee"
+    path = _gcapture_render_script_path(blend, engine)
     tail = ["--", "--cycles-device", dtype] if (engine == 'CYCLES' and dtype) else []
     if sys.platform.startswith("win"):
-        path = os.path.join(folder, "%s_render_%s.cmd" % (stem, eng))
         args = " ".join(tail)
 
         def q(s):
@@ -3241,8 +3258,6 @@ def _gcapture_write_render_script(blend, engine, dtype, blender):
         with open(path, "w", encoding="utf-8", newline="") as f:
             f.write(text)
     else:
-        ext = "command" if sys.platform == "darwin" else "sh"
-        path = os.path.join(folder, "%s_render_%s.%s" % (stem, eng, ext))
         import shlex
         text = "\n".join([
             "#!/bin/sh",
@@ -4133,8 +4148,8 @@ _GCAPTURE_WT_STEPS = [
                 "it.",
                 "Check the render output in the box below.",
                 "Press Render EEVEE (much faster, lighting approximated) or "
-                "Render Cycles (exact path tracing, slower) - rendering "
-                "starts at once; Esc cancels."],
+                "Render Cycles (exact path tracing, slower): the scene is "
+                "saved, then rendering starts; Esc cancels."],
          check="the status line shows all images found.",
          note=["Command Line Render: the buttons save the scene and write a "
                "script next to it - double-click it to render headless; "
