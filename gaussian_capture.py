@@ -8,10 +8,13 @@ cloud. Panel: 3D viewport sidebar (N), tab "Gaussian Render Capture";
 beginners press "Start Guide". Documentation: README.md and docs/.
 
 Copyright (C) 2026 Prof. Michael Klein
+Portions (ray-casting helpers, see below) Copyright (C) 2025 Arash
+Keshmirian / Warpgate Labs.
 License: GPL-3.0-or-later (see LICENSE).
 
-Third-party code: the add-on started from "Gauss Cannon" by Warpgate Labs
-(GPL-3.0-or-later, https://github.com/warpgatelabs/gauss-cannon). Adapted
+Third-party code: the add-on started from "Gauss Cannon" by Arash
+Keshmirian (Warpgate Labs; GPL-3.0-or-later,
+https://github.com/warpgatelabs/gauss-cannon). Adapted
 from its utils/ray_casting.py and still part of this file:
     _rc_is_camera_inside_mesh, _rc_build_visible_mesh_bvh_cache,
     _rc_build_near_frustum_bvh, _rc_geometry_within_near_clip
@@ -37,7 +40,7 @@ Code comments are in German.
 bl_info = {
     "name": "Gaussian Render Capture",
     "author": "Prof. Michael Klein - Mediadesign University of Applied Sciences",
-    "version": (1, 1, 0),
+    "version": (1, 1, 1),
     "blender": (4, 1, 0),
     "location": "View3D > Sidebar (N) > Gaussian Render Capture",
     "description": "Synthetic COLMAP datasets for Gaussian Splatting: camera "
@@ -4216,8 +4219,9 @@ class GCAPTURE_PT_advanced(_GCAPTURE_SubPanel, Panel):
         foot.label(text="Developed with Anthropic Claude")
         foot.label(text="as AI assistant (Claude Code)")
         foot.label(text="GPL-3.0-or-later")
-        foot.label(text="Started from Gauss Cannon (Warpgate Labs);")
-        foot.label(text="its ray-casting helpers remain")
+        foot.label(text="Started from Gauss Cannon by Arash")
+        foot.label(text="Keshmirian (Warpgate Labs); its")
+        foot.label(text="ray-casting helpers remain")
 
 
 # ----------------------------------------------------------------------
@@ -4244,7 +4248,8 @@ _EXP_KNOWN_EXTS = ("tif", "tiff", "png", "jpg", "jpeg", "exr", "tga", "bmp")
 
 # ----------------------------------------------------------------------
 # Ray-Casting-Helfer (Interior-Kamera-Erkennung)
-# Abgeleitet aus "Gauss Cannon" (Warpgate Labs), GPL-3.0-or-later.
+# Abgeleitet aus "Gauss Cannon" von Arash Keshmirian (Warpgate Labs),
+# GPL-3.0-or-later.
 # Quelle: https://github.com/warpgatelabs/gauss-cannon
 # An unsere Datenstrukturen angepasst; siehe Lizenzsektion im Header.
 # ----------------------------------------------------------------------
@@ -4647,7 +4652,8 @@ def _exp_point_in_bounds(co_world, bounds):
 
 def _exp_build_scene_bvh(objs):
     """Einzelner Welt-Raum-BVHTree ueber alle angegebenen Meshes.
-    Abgeleitet aus "Gauss Cannon" (Warpgate Labs), GPL-3.0-or-later;
+    Abgeleitet aus "Gauss Cannon" von Arash Keshmirian (Warpgate Labs),
+    GPL-3.0-or-later;
     siehe Lizenzsektion im Header."""
     depsgraph = bpy.context.evaluated_depsgraph_get()
     vert_arrays = []

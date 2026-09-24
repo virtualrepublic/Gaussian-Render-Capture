@@ -63,10 +63,11 @@ keep the new names.
 
 ## Licence and credits
 
-Copyright (C) 2026 Prof. Michael Klein. Licensed under GPL-3.0-or-later (see [LICENSE](LICENSE)).
+Copyright (C) 2026 Prof. Michael Klein; portions (ray-casting helpers) Copyright (C) 2025 Arash
+Keshmirian / Warpgate Labs. Licensed under GPL-3.0-or-later (see [LICENSE](LICENSE)).
 
-Started from [Gauss Cannon](https://github.com/warpgatelabs/gauss-cannon) by Warpgate Labs
-(GPL-3.0-or-later); today only its ray-casting helpers remain (interior-camera test, CPU
+Started from [Gauss Cannon](https://github.com/warpgatelabs/gauss-cannon) by Arash Keshmirian
+(Warpgate Labs, GPL-3.0-or-later); today only its ray-casting helpers remain (interior-camera test, CPU
 fallback of the visibility filter). Details and all other third-party notices:
 [THIRD_PARTY.md](THIRD_PARTY.md).
 
