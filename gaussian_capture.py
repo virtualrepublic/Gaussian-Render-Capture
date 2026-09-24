@@ -3192,8 +3192,12 @@ class GCAPTURE_OT_render_images(Operator):
         dtype = None
         if self.engine == 'CYCLES':
             dtype, _ = _gcapture_setup_gpu()
+        # Absolut: unter macOS meldet Blender den Pfad relativ, wenn es von
+        # der Kommandozeile gestartet wurde; das Skript wechselt aber erst in
+        # den Szenenordner (v1.1.5, im CI gefunden: Exit 127).
         return _gcapture_write_render_script(
-            bpy.data.filepath, self.engine, dtype, bpy.app.binary_path)
+            bpy.data.filepath, self.engine, dtype,
+            os.path.abspath(bpy.app.binary_path))
 
     def invoke(self, context, event):
         err = self._prepare(context)
