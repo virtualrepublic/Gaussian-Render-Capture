@@ -82,7 +82,7 @@ fallback of the visibility filter). Details and all other third-party notices:
 [THIRD_PARTY.md](THIRD_PARTY.md).
 
 [Prof. Michael Klein](https://www.linkedin.com/in/virtualrepublic/)<br>
-[Digital Film Design — Animation/VFX](https://www.mediadesign.de/en/bachelor/digital-film-design-animation-vfx-ba) ·
+[Digital Film Design – Animation/VFX](https://www.mediadesign.de/en/bachelor/digital-film-design-animation-vfx-ba) ·
 [Mediadesign University of Applied Sciences](https://www.mediadesign.de)<br>
 [mediadesign.de](https://www.mediadesign.de) · [virtualrepublic.org](https://www.virtualrepublic.org) ·
 [renderbricks.com](https://www.renderbricks.com)

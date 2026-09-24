@@ -25,7 +25,7 @@ and the idea of a list of guide meshes. Everything else is original work.
 See THIRD_PARTY.md.
 
 Maintainer: Prof. Michael Klein
-    Digital Film Design — Animation/VFX · Mediadesign University of
+    Digital Film Design – Animation/VFX · Mediadesign University of
     Applied Sciences
     https://www.mediadesign.de  https://www.virtualrepublic.org
     https://www.renderbricks.com
@@ -4280,7 +4280,7 @@ class GCAPTURE_PT_advanced(_GCAPTURE_SubPanel, Panel):
         foot = layout.column(align=True)
         foot.scale_y = 0.8
         foot.label(text="Prof. Michael Klein", icon='INFO')
-        foot.label(text="Digital Film Design — Animation/VFX")
+        foot.label(text="Digital Film Design – Animation/VFX")
         foot.label(text="Mediadesign University of Applied Sciences")
         for url in ("www.mediadesign.de", "www.virtualrepublic.org",
                     "www.renderbricks.com",
