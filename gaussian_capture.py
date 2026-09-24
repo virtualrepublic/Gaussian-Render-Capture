@@ -3532,14 +3532,24 @@ def _gcapture_draw_render(layout, context):
                      icon='RENDER_ANIMATION')
 
 
+def _gcapture_section(layout, title, icon):
+    """Kasten mit Ueberschrift, gliedert lange Schritte (v1.1.5)."""
+    box = layout.box()
+    box.label(text=title, icon=icon)
+    return box.column()
+
+
 def _gcapture_draw_export(layout, context):
     s = context.scene.gcapture_settings
     outer = layout
     layout = _gcapture_lock(outer)
-    ecol = layout.column(align=True)
+
+    # --- Datensatz: wohin, und woher die Bilder kommen -------------------
+    ds = _gcapture_section(layout, "Dataset", 'FILE_FOLDER')
+    ecol = ds.column(align=True)
     # Bezeichnung ueber dem Feld: in der schmalen Seitenleiste wurde sie
     # sonst abgeschnitten, und der Pfad bekommt die volle Breite (v129).
-    ecol.label(text="Output Folder (dataset):")
+    ecol.label(text="Output Folder:")
     orow = ecol.row(align=True)
     orow.prop(s, "exp_output_dir", text="")
     if (s.exp_output_dir or "").strip() and not s.exp_output_dir.startswith("//"):
@@ -3559,22 +3569,42 @@ def _gcapture_draw_export(layout, context):
     if (s.exp_image_dir or "").strip() and not s.exp_image_dir.startswith("//"):
         op = irow.operator("gcapture.path_relative", text="", icon='DOT')
         op.prop = "exp_image_dir"
-    ecol.label(text="Point Source:")
-    ecol.prop(s, "exp_point_source", text="")
+    # Rendert die Szene schon in den Datensatz, sind Copy/Move ueberfluessig.
+    inplace = _exp_same_dir(_exp_resolve_image_dir(s),
+                            os.path.join(_exp_resolve_output_dir(s), "images"))
+    if inplace:
+        ds.label(text="Images render into the dataset", icon='CHECKMARK')
+    else:
+        ds.prop(s, "exp_image_mode")
+        if s.exp_image_mode == 'MOVE':
+            wcol = ds.column(align=True)
+            wrow = wcol.row()
+            wrow.alert = True
+            wrow.label(text="Move removes images from the render folder!",
+                       icon='ERROR')
+            wcol.label(text="Only runs if all images are present", icon='INFO')
+        elif s.exp_image_mode == 'NONE':
+            # LichtFeld/COLMAP lesen images/ neben sparse/ -- ohne Bilder kein
+            # Training. Mit eigenem Bildordner ist das der haeufigste Fehler.
+            wrow = ds.row()
+            wrow.alert = True       # immer rot: ohne Bilder kein Training (v125)
+            wrow.label(text="Images are not in the dataset - choose Copy or Move",
+                       icon='ERROR')
+
+    # --- Startpunkte: Quelle, Menge, Filter, Wiederverwendung --------------
+    pts = _gcapture_section(layout, "Start Points", 'OUTLINER_DATA_POINTCLOUD')
+    pcol = pts.column(align=True)
+    pcol.label(text="Point Source:")
+    pcol.prop(s, "exp_point_source", text="")
     if s.exp_point_source == 'OBJECTS':
-        ecol.prop(s, "exp_point_objects")
+        pcol.prop(s, "exp_point_objects")
     elif s.exp_point_source == 'TARGETS':
         names = [it.coll.name for it in s.sph_target_colls if it.coll]
-        ecol.label(text="From: %s" % (", ".join(names) if names
+        pcol.label(text="From: %s" % (", ".join(names) if names
                                        else "no collection - all visible meshes"),
                    icon='OUTLINER_COLLECTION')
-    erow = layout.row(align=True)
-    erow.prop(s, "exp_auto_scale")
-    sub = erow.row(align=True)
-    sub.enabled = s.exp_auto_scale
-    sub.prop(s, "exp_target_radius")
-    ecol2 = layout.column(align=True)
-    ecol2.prop(s, "exp_use_vertex_count")
+    vcol = pts.column(align=True)
+    vcol.prop(s, "exp_use_vertex_count")
     # Vertex-Zahlen nur einmal je Neuzeichnen ermitteln (v110).
     try:
         counts = _exp_vertex_counts(context.scene, s)
@@ -3583,60 +3613,65 @@ def _gcapture_draw_export(layout, context):
     if s.exp_use_vertex_count:
         try:
             n_obj, n_unique, k_obj, k_mesh = counts
-            ecol2.label(text="Max Points: {:,} vertices".format(n_obj),
-                        icon='VERTEXSEL')
+            vcol.label(text="{:,} vertices".format(n_obj), icon='VERTEXSEL')
             if n_unique != n_obj:
-                ecol2.label(text="({:,} objects, {:,} unique meshes: "
-                            "statistics {:,})".format(k_obj, k_mesh, n_unique))
+                vcol.label(text="{:,} objects, {:,} unique meshes".format(
+                    k_obj, k_mesh))
             if n_obj > 5000000:
-                ecol2.label(text="Above LichtFeld's default Max Cap "
-                            "(5,000,000) - raise it there", icon='INFO')
+                vcol.label(text="More than LichtFeld's Max Cap", icon='INFO')
+                vcol.label(text="(5,000,000) - raise it there")
         except Exception:
             pass
     else:
-        ecol2.prop(s, "exp_max_points")
-    ecol2.prop(s, "exp_point_color")
-    # Rendert die Szene schon in den Datensatz, sind Copy/Move ueberfluessig.
-    inplace = _exp_same_dir(_exp_resolve_image_dir(s),
-                            os.path.join(_exp_resolve_output_dir(s), "images"))
-    if inplace:
-        ecol2.label(text="Images render straight into the dataset",
-                    icon='CHECKMARK')
-    else:
-        ecol2.prop(s, "exp_image_mode")
-    if not inplace and s.exp_image_mode == 'MOVE':
-        wcol = ecol2.column(align=True)
-        wrow = wcol.row()
-        wrow.alert = True
-        wrow.label(text="Move removes images from the render folder!",
-                   icon='ERROR')
-        wcol.label(text="Only runs if all images are present", icon='INFO')
-    ecol2.prop(s, "exp_zup_to_yup")
-    vbox = layout.column(align=True)
-    vbox.prop(s, "exp_face_points_vischeck")
-    if s.exp_face_points_vischeck == 'RAYCAST':
-        vbox.label(text="Checks every camera on the GPU; ESC cancels",
-                   icon='INFO')
-    fpbox = layout.column(align=True)
-    fpbox.prop(s, "exp_face_points")
+        vcol.prop(s, "exp_max_points")
+    fcol = pts.column(align=True)
+    fcol.prop(s, "exp_face_points")
     if s.exp_face_points:
         if s.exp_use_vertex_count:
-            fpbox.prop(s, "exp_face_points_percent")
+            fcol.prop(s, "exp_face_points_percent")
             if counts is not None:
                 if s.exp_crop_enable:
-                    fpbox.label(text="Share of the vertices inside the crop box")
+                    fcol.label(text="Share of the vertices inside the crop box")
                 else:
-                    fpbox.label(text="~{:,} points".format(
+                    fcol.label(text="~{:,} points".format(
                         _exp_face_count(s, counts[0])))
         else:
-            fpbox.prop(s, "exp_face_points_count")
-    cbox2 = layout.column(align=True)
+            fcol.prop(s, "exp_face_points_count")
+    ccol = pts.column(align=True)
+    ccol.label(text="Visibility Filter:")
+    ccol.prop(s, "exp_face_points_vischeck", text="")
+    if s.exp_face_points_vischeck == 'RAYCAST':
+        ccol.label(text="GPU check per camera, Esc cancels", icon='INFO')
+    ccol.label(text="Point Color:")
+    ccol.prop(s, "exp_point_color", text="")
+    cbox2 = pts.column(align=True)
     cbox2.prop(s, "exp_crop_enable")
     if s.exp_crop_enable:
         cbox2.prop(s, "exp_crop_object")
         cbox2.prop(s, "exp_crop_margin")
         if s.exp_crop_object is None:
             cbox2.label(text="Pick a bounds object", icon='INFO')
+    rrow = pts.column(align=True)
+    rrow.prop(s, "exp_reuse_points")
+    if s.exp_reuse_points:
+        stored = bpy.path.abspath(s.exp_last_points_file or "")
+        if stored and os.path.isfile(stored):
+            rrow.label(text="Stored: %s - reused if unchanged"
+                       % os.path.basename(os.path.normpath(os.path.dirname(
+                           os.path.dirname(os.path.dirname(stored))))),
+                       icon='FILE_TICK')
+        else:
+            rrow.label(text="No stored point cloud yet", icon='INFO')
+
+    # --- Massstab und Achsen ---------------------------------------------
+    sc = _gcapture_section(layout, "Scale & Axes", 'ORIENTATION_GLOBAL')
+    scol = sc.column(align=True)
+    scol.prop(s, "exp_auto_scale")
+    sub = scol.row(align=True)
+    sub.enabled = s.exp_auto_scale
+    sub.prop(s, "exp_target_radius")
+    sc.prop(s, "exp_zup_to_yup")
+
     # Warnung, wenn im Zielordner schon ein Export liegt -- der Export
     # ueberschreibt sparse/0 (und images/) ohne Rueckfrage (v84).
     try:
@@ -3649,24 +3684,6 @@ def _gcapture_draw_export(layout, context):
                        icon='ERROR')
     except Exception:
         pass
-    if not inplace and s.exp_image_mode == 'NONE':
-        # LichtFeld/COLMAP lesen images/ neben sparse/ -- ohne Bilder kein
-        # Training. Mit eigenem Bildordner ist das der haeufigste Fehler.
-        wrow = layout.row()
-        wrow.alert = True       # immer rot: ohne Bilder kein Training (v125)
-        wrow.label(text="Images are not in the dataset - choose Copy or Move",
-                   icon='ERROR')
-    rrow = layout.column(align=True)
-    rrow.prop(s, "exp_reuse_points")
-    if s.exp_reuse_points:
-        stored = bpy.path.abspath(s.exp_last_points_file or "")
-        if stored and os.path.isfile(stored):
-            rrow.label(text="Stored cloud: %s - reused if nothing changed"
-                       % os.path.basename(os.path.normpath(os.path.dirname(
-                           os.path.dirname(os.path.dirname(stored))))),
-                       icon='FILE_TICK')
-        else:
-            rrow.label(text="No stored point cloud yet", icon='INFO')
     if not _gcapture_progress_draw(outer, "gcapture.export_colmap"):
         erow2 = _gcapture_lock(outer).row()
         erow2.scale_y = 1.3
@@ -3679,7 +3696,9 @@ def _gcapture_draw_export(layout, context):
         rcol.label(text="Last export: {:,} points".format(s.exp_last_points),
                    icon='CHECKMARK')
         if s.exp_last_detail:
-            rcol.label(text=s.exp_last_detail)
+            # Umbrechen statt abschneiden (v1.1.5).
+            for line in _gcapture_textwrap.wrap(s.exp_last_detail, 42):
+                rcol.label(text=line)
 
 
 # ----------------------------------------------------------------------
