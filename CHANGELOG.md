@@ -19,11 +19,11 @@ documentation changes are not.
 
 ## [1.1.2] – 2026-09-24
 
-No functional changes.
+No functional changes – texts in the add-on and the documentation were revised in content and form.
 
 ## [1.1.1] – 2026-09-24
 
-No functional changes.
+No functional changes – texts in the add-on and the documentation were revised in content and form.
 
 ## [1.1.0] – 2026-09-23
 
@@ -39,11 +39,11 @@ and does not scan anything real.
 
 ## [1.0.2] – 2026-09-23
 
-No functional changes.
+No functional changes – texts in the add-on and the documentation were revised in content and form.
 
 ## [1.0.1] – 2026-09-23
 
-No functional changes.
+No functional changes – texts in the add-on and the documentation were revised in content and form.
 
 ## [1.0.0] – 2026-09-23
 
