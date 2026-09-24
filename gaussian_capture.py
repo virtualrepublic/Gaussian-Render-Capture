@@ -527,9 +527,9 @@ class GCAPTURE_Settings(PropertyGroup):
         default=False,
     )
     sph_set_as_guide: BoolProperty(
-        name="Set as Guide",
-        description="After creating the sphere, set it as the active guide "
-                    "so you can Build right away",
+        name="Build Cameras on This Sphere",
+        description="Cameras are built on the faces of this sphere, so you "
+                    "can Build right away (replaces custom camera guides)",
         default=True,
     )
     sph_object: PointerProperty(

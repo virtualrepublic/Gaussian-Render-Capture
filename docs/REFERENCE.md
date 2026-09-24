@@ -36,7 +36,7 @@ in short.
 | Center in Each View | on | With Fill Each View: each camera also shifts sideways (same direction) so the model is centred in its image. |
 | Framing Margin | 1.0 | Room around the model; 1.0 fills the image, 1.1 leaves about 10 %. |
 | Upper Hemisphere Only | off | No views from below – for objects on a ground. |
-| Set as Guide | on | Makes the new sphere the guide for Build. |
+| Build Cameras on This Sphere | on | Build puts the cameras on the faces of the new sphere (replaces custom camera guides). |
 | **Create / Update Camera Sphere** | – | Creates or refits the sphere (collection *Capture_Rig*). Discards Live Camera Adjust changes. |
 
 ## 5. Build Camera Animation
