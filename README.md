@@ -54,7 +54,9 @@ AMD, Intel and Apple GPUs has not been tried yet – reports are welcome in the
 For training: Postshot runs on Windows, LichtFeld Studio on Windows and Linux with an NVIDIA GPU.
 On macOS use a trainer that reads COLMAP datasets.
 
-1. *Edit → Preferences → Add-ons → Install from Disk…* and pick `gaussian_capture.py`.
+**[⬇ Download gaussian_capture.py](https://github.com/virtualrepublic/Gaussian-Render-Capture/releases/latest/download/gaussian_capture.py)** (latest release)
+
+1. *Edit → Preferences → Add-ons → Install from Disk…* and pick the downloaded `gaussian_capture.py`.
 2. Enable **Gaussian Render Capture** (disable any older version first).
 3. The panel is in the 3D viewport sidebar (N), tab **Gaussian Render Capture** – press **Start Guide**.
 

@@ -36,6 +36,8 @@ Contents: [0 Install](#0-install-the-add-on) · [Start the guide](#start-the-gui
 
 <img src="images/B02_prefs.png" alt="Preferences, Add-ons">
 
+**[⬇ Download gaussian_capture.py](https://github.com/virtualrepublic/Gaussian-Render-Capture/releases/latest/download/gaussian_capture.py)** (latest release)
+
 1. *Edit → Preferences → Add-ons*, open the menu at the top right and choose
    **Install from Disk…**, then pick `gaussian_capture.py`.
 2. Tick **Gaussian Render Capture** to enable it.
