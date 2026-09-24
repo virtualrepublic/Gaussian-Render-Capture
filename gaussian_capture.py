@@ -528,10 +528,10 @@ class GCAPTURE_Settings(PropertyGroup):
         default=False,
     )
     render_headless: BoolProperty(
-        name="Render in Background (script)",
-        description="Cycles / EEVEE save the scene and write a script next "
-                    "to it instead of rendering here. Double-click the script "
-                    "to render all cameras without Blender's interface - "
+        name="Command Line Render",
+        description="Headless: instead of rendering here, the buttons save the "
+                    "scene and write a double-click script next to it. The "
+                    "script renders all cameras without Blender's interface - "
                     "Blender stays free, and the render goes on when Blender "
                     "is closed",
         default=False,
@@ -3761,12 +3761,17 @@ def _gcapture_draw_render(layout, context):
     row = rcol.row(align=True)
     row.scale_y = 1.4
     # Beschriftung sagt, was der Klick tut: rendern oder Skript schreiben.
-    verb = "Script" if s.render_headless else "Render"
-    op = row.operator("gcapture.render_images", text="%s Cycles" % verb,
+    if s.render_headless:
+        ext = (".cmd" if sys.platform.startswith("win") else
+               ".command" if sys.platform == "darwin" else ".sh")
+        t_cyc, t_eev = "Write Cycles " + ext, "Write EEVEE " + ext
+    else:
+        t_cyc, t_eev = "Render Cycles", "Render EEVEE"
+    op = row.operator("gcapture.render_images", text=t_cyc,
                       icon='CONSOLE' if s.render_headless else 'SHADING_RENDERED',
                       depress=pending and not eevee)
     op.engine = 'CYCLES'
-    op = row.operator("gcapture.render_images", text="%s EEVEE" % verb,
+    op = row.operator("gcapture.render_images", text=t_eev,
                       icon='CONSOLE' if s.render_headless else 'SHADING_SOLID',
                       depress=pending and eevee)
     op.engine = 'EEVEE'

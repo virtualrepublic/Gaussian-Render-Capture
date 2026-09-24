@@ -213,8 +213,8 @@ adjustments – the panel shows a red warning and Build asks before it does so.
    lighting approximated). Blender's render window shows the progress; **Esc** cancels. On a
    render farm, render the saved scene there instead.
 
-   *Render in Background (script)*: with this option the buttons read **Script Cycles** /
-   **Script EEVEE**; they save the scene and write a
+   *Command Line Render* (headless): with this option the buttons read **Write Cycles .cmd** /
+   **Write EEVEE .cmd**; they save the scene and write a
    script next to it, e.g. `Beetle_v001_render_cycles.cmd`. Double-click it to render without
    Blender's interface – Blender stays free, and the render goes on when you close Blender.
 

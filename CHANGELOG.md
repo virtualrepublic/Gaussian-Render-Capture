@@ -12,7 +12,7 @@ documentation changes are not.
 - Step 6 renders the images itself: **Render Cycles** (exact path tracing, settings of *Prepare Scene*)
   or **Render EEVEE** (much faster, lighting approximated; a capture preset is applied once – ray tracing
   and fast GI at full resolution, soft shadows, overscan, 256 samples). Esc cancels.
-- *Render in Background (script)*: instead of rendering in Blender, the buttons save the scene and
+- *Command Line Render* (headless): instead of rendering in Blender, the buttons save the scene and
   write a double-click script next to it that renders headless with the same Blender version
   (`.cmd` on Windows, `.command` on macOS, `.sh` on Linux).
 - Blender 4.1 with OptiX: Cycles denoises with OptiX – OpenImageDenoise fails there on systems

@@ -59,7 +59,7 @@ preset off when you render into a folder of your own.
 | Resolution (square) | 1000 | Render resolution in pixels, width = height; applied at once. Confirm once with **OK**. |
 | **Render Cycles** | – | Starts rendering: one image per camera into the dataset with Cycles on the GPU and the settings of *Prepare Scene*. Exact, slower. |
 | **Render EEVEE** | – | The same with EEVEE: much faster, lighting approximated. The first time it applies a capture preset (256 samples, ray tracing and fast GI at full resolution, soft shadows, overscan); your later changes are kept. |
-| Render in Background (script) | off | The buttons read *Script Cycles* / *Script EEVEE*: they save the scene and write a double-click script next to it (`<Scene>_render_cycles.cmd` / `_eevee`; `.command` on macOS, `.sh` on Linux) that renders headless with the same Blender version. |
+| Command Line Render | off | Headless: the buttons read *Write Cycles .cmd* / *Write EEVEE .cmd* (`.command` on macOS, `.sh` on Linux): they save the scene and write a double-click script next to it (`<Scene>_render_cycles.cmd` / `_eevee`; `.command` on macOS, `.sh` on Linux) that renders headless with the same Blender version. |
 
 Under *Advanced → Render Setup* (keep on for a capture): Step per Frame (constant keyframes), Set as
 Active Camera, Set Scene Frame Range, Set Render Resolution. They apply at once and on every Build.
