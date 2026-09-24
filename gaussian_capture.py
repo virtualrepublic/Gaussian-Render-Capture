@@ -431,7 +431,7 @@ class GCAPTURE_Settings(PropertyGroup):
              "texture -- fine for visual inspection (Postshot learns the real "
              "colors from the images anyway)"),
         ],
-        default='NONE',
+        default='MATERIAL',
     )
     # --- Random face points (area-weighted surface sampling) ---
     exp_face_points: BoolProperty(
@@ -5315,7 +5315,7 @@ class _ExpGpuDepth:
 
 
 def _exp_sample_face_points(objs, count, scale, W, world_out=None,
-                            crop_bounds=None):
+                            crop_bounds=None, colors_out=None):
     """Verteilt 'count' Punkte flaechengewichtet ueber die Oberflaechen der
     Objekte (gleichmaessige Startdichte unabhaengig vom Vertex-Layout).
     Rueckgabe: Liste (x,y,z) in Y-up + Scale; world_out bekommt parallel die
@@ -5325,9 +5325,13 @@ def _exp_sample_face_points(objs, count, scale, W, world_out=None,
     Seit v110: Dreiecke per foreach_get/numpy (vorher bmesh + Python-
     Schleife je Dreieck) und Crop-Box wie bei den Vertex-Punkten -- Punkte
     ausserhalb werden verworfen und so lange nachgezogen, bis 'count'
-    erreicht ist (hoechstens 6 Runden)."""
+    erreicht ist (hoechstens 6 Runden).
+
+    Seit v1.1.5: colors_out bekommt je Punkt die Base Color des Materials
+    der Flaeche (sRGB-Bytes), wie die Vertex-Punkte im Modus Material."""
     depsgraph = bpy.context.evaluated_depsgraph_get()
     tri_chunks = []
+    col_chunks = []
     for obj in objs:
         if obj.type != 'MESH':
             continue
@@ -5348,31 +5352,42 @@ def _exp_sample_face_points(objs, count, scale, W, world_out=None,
             idx = np.empty(nt * 3, dtype=np.int32)
             mesh.loop_triangles.foreach_get("vertices", idx)
             tri_chunks.append(world[idx.reshape(nt, 3).astype(np.int64)])
+            if colors_out is not None:
+                mi = np.empty(nt, dtype=np.int32)
+                mesh.loop_triangles.foreach_get("material_index", mi)
+                mc = np.array(_exp_object_material_colors(obj), dtype=np.float64)
+                col_chunks.append(mc[np.clip(mi, 0, len(mc) - 1)])
         finally:
             obj_eval.to_mesh_clear()
     if not tri_chunks or count <= 0:
         return []
     A = np.vstack(tri_chunks)                                   # (T,3,3)
+    C = np.vstack(col_chunks) if col_chunks else None           # (T,3)
     area = 0.5 * np.linalg.norm(np.cross(A[:, 1] - A[:, 0],
                                          A[:, 2] - A[:, 0]), axis=1)
     good = area > 0.0
     A, area = A[good], area[good]
+    if C is not None:
+        C = C[good]
     if not len(A):
         return []
     prob = area / area.sum()
     rng = np.random.default_rng()
+    picks = []
 
     def draw(k):
         pick = rng.choice(len(A), size=int(k), p=prob)
         r1 = np.sqrt(rng.random(len(pick)))[:, None]
         r2 = rng.random(len(pick))[:, None]
         tri = A[pick]
+        picks.append(pick)
         return (tri[:, 0] * (1.0 - r1) + tri[:, 1] * (r1 * (1.0 - r2))
                 + tri[:, 2] * (r1 * r2))
 
     count = int(count)
     if crop_bounds is None:
         world = draw(count)
+        pick_all = picks[0]
     else:
         c_mn = np.array(tuple(crop_bounds[0]), dtype=np.float64)
         c_mx = np.array(tuple(crop_bounds[1]), dtype=np.float64)
@@ -5384,17 +5399,23 @@ def _exp_sample_face_points(objs, count, scale, W, world_out=None,
             k = need if frac is None else int(need / max(frac, 1e-3) * 1.1) + 1
             k = min(k, count * 50)
             smp = draw(k)
-            inside = smp[np.all((smp >= c_mn) & (smp <= c_mx), axis=1)]
+            keep = np.all((smp >= c_mn) & (smp <= c_mx), axis=1)
+            inside = smp[keep]
+            picks[-1] = picks[-1][keep]
             frac = len(inside) / float(len(smp))
             got.append(inside)
             have += len(inside)
             if frac == 0.0:
                 break
         world = np.vstack(got)[:count] if got else np.empty((0, 3))
+        pick_all = (np.concatenate(picks)[:count] if picks
+                    else np.empty(0, dtype=np.int64))
     Wm = np.array(W, dtype=np.float64)
     out = (world @ Wm.T) * scale
     if world_out is not None:
         world_out.extend(map(Vector, world.tolist()))
+    if colors_out is not None and C is not None:
+        colors_out.extend(map(tuple, _exp_srgb_bytes_np(C[pick_all]).tolist()))
     # tolist() -> echte Python-floats fuer points3D.txt (v109-Fix).
     return out.tolist()
 
@@ -6096,15 +6117,21 @@ class GCAPTURE_OT_export_colmap(Operator):
         face_count = _exp_face_count(s, len(pts))
         if s.exp_face_points:
             world_f = [] if need_world else None
+            # Farbe wie die Vertex-Punkte: Material der Flaeche (v1.1.5).
+            fcols = [] if (cols is not None and s.exp_point_color != 'NONE') else None
             fpts = _exp_sample_face_points(
                 targets, face_count, self._scale, self._W,
-                world_out=world_f, crop_bounds=self._crop_bounds)
+                world_out=world_f, crop_bounds=self._crop_bounds,
+                colors_out=fcols)
             if fpts:
                 self._n_face = len(fpts)
                 neutral = (200, 200, 200)
                 pts = list(pts) + list(fpts)
                 if cols is not None:
-                    cols = list(cols) + [neutral] * len(fpts)
+                    if fcols and len(fcols) == len(fpts):
+                        cols = list(cols) + list(fcols)
+                    else:
+                        cols = list(cols) + [neutral] * len(fpts)
                 if need_world and world_main is not None and world_f is not None:
                     world_main = list(world_main) + list(world_f)
 

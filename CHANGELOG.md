@@ -15,6 +15,8 @@ documentation changes are not.
 - *Command Line Render* (headless): instead of rendering in Blender, the buttons save the scene and
   write a double-click script next to it that renders headless with the same Blender version
   (`.cmd` on Windows, `.command` on macOS, `.sh` on Linux).
+- Start points take the material base colour by default; face points now carry it as well
+  (before, they were always grey).
 - Blender 4.1 with OptiX: Cycles denoises with OptiX – OpenImageDenoise fails there on systems
   with a current Intel graphics driver.
 

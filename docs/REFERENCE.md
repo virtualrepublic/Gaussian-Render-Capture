@@ -73,7 +73,7 @@ Active Camera, Set Scene Frame Range, Set Render Resolution. They apply at once 
 | Point Source | Look Target Collections | Where the start points come from: the look-target collections, all visible meshes, or named objects. |
 | Auto Scale / Target Radius | on / 3.0 | Scales the dataset so the cameras are on average 3 units from the centre (Postshot densifies very small or large scenes badly). The factor goes into `<vNNN>_gcapture_export.json` next to the dataset folder. |
 | Use Vertex Count | on | Every vertex of the model becomes a start point. Off: set *Max Points* yourself. |
-| Point Color | Neutral Gray | Colour of the start points: grey, a vertex colour layer, or the material base colour. |
+| Point Color | Material Base Color | Colour of the start points, face points included: the material base colour, a vertex colour layer, or grey. |
 | Images | Don't include | Only with your own render folder: *Copy* or *Move* the images into the dataset. |
 | Z-up → Y-up | on | Converts Blender's axes to the Y-up convention of the trainers. |
 | Visibility Filter | Visible Only | Drops points no camera can see (GPU depth maps); Esc cancels. |
