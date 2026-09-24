@@ -10,6 +10,7 @@ changes that break existing scenes or settings.
   case – non-square pixel aspect and lens shift with an explicit sensor fit were off before.
   The normal workflow (square images, square pixels) was already exact. New test: 162 camera
   setups against Blender's own projection.
+- Maintainer's LinkedIn profile linked in the README and the panel.
 
 ## [1.1.2] – 2026-09-24
 

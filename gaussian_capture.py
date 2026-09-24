@@ -28,6 +28,7 @@ Maintainer: Prof. Michael Klein - Digital Film Design, Animation/VFX,
 Mediadesign University of Applied Sciences
     https://www.mediadesign.de  https://www.virtualrepublic.org
     https://www.renderbricks.com
+    https://www.linkedin.com/in/virtualrepublic/
 
 Transparency note on the use of AI: the author is not a programmer but
 has many years of experience in CGI. The add-on was developed entirely
@@ -4212,7 +4213,8 @@ class GCAPTURE_PT_advanced(_GCAPTURE_SubPanel, Panel):
         foot.label(text="Digital Film Design — Animation/VFX")
         foot.label(text="Mediadesign University of Applied Sciences")
         for url in ("www.mediadesign.de", "www.virtualrepublic.org",
-                    "www.renderbricks.com"):
+                    "www.renderbricks.com",
+                    "www.linkedin.com/in/virtualrepublic/"):
             lrow = foot.row()
             lrow.alignment = 'LEFT'
             op = lrow.operator("wm.url_open", text=url, icon='URL',
