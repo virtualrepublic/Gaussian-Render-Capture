@@ -545,6 +545,21 @@ class GCAPTURE_Settings(PropertyGroup):
                 "smaller files, same images")],
         default='PNG',
     )
+    clean_splat_file: StringProperty(
+        name="Splat File",
+        description="The trained splat (.ply from LichtFeld Studio or Postshot) "
+                    "of this scene version",
+        default="", subtype='FILE_PATH',
+        update=lambda self, context: setattr(self, "clean_last_result", ""),
+    )
+    clean_min_views: IntProperty(
+        name="Min. Views",
+        description="A splat is removed when it lies in front of the model's "
+                    "surface in at least this many cameras (splats no camera "
+                    "sees are always removed)",
+        default=2, min=1, max=20,
+    )
+    clean_last_result: StringProperty(options={'HIDDEN'})
     render_script: StringProperty(
         name="Render Script",
         description="Last headless render script written",
@@ -2611,6 +2626,7 @@ _GCAPTURE_BADGE_RGB = {
     'CAMERAS': (0.95, 0.80, 0.16),   # yellow: Cameras
     'OUTPUT': (0.33, 0.70, 0.28),    # green:  Render
     'COLMAP': (0.23, 0.65, 0.79),    # blue:   COLMAP export (v146)
+    'SPLAT': (0.62, 0.45, 0.85),     # violet: after training (1.2.0)
     'NEUTRAL': (0.92, 0.92, 0.92),   # white:  no phase (Camera Settings)
 }
 # Digits as stroke paths in a unit square (x right, y up).
@@ -2630,6 +2646,11 @@ _GCAPTURE_DIGIT_STROKES = {
            (0.18, 0.32), (0.26, 0.12), (0.48, 0.03), (0.70, 0.10),
            (0.82, 0.30), (0.76, 0.50), (0.52, 0.58), (0.30, 0.52),
            (0.19, 0.36)]],
+    # 8 (1.2.0, step 8 Clean Splat): two closed loops, the upper one smaller.
+    "8": [[(0.50 + 0.40 * math.cos(a * math.pi / 8.0),
+            0.25 + 0.24 * math.sin(a * math.pi / 8.0)) for a in range(17)],
+          [(0.50 + 0.33 * math.cos(a * math.pi / 8.0),
+            0.74 + 0.22 * math.sin(a * math.pi / 8.0)) for a in range(17)]],
 }
 # Badges: name -> (phase, digit; None = dot without number, "" = empty).
 _GCAPTURE_BADGES = {
@@ -2640,8 +2661,9 @@ _GCAPTURE_BADGES = {
     'gcapture_4': ('CAMERAS', "5"),
     'gcapture_5': ('OUTPUT', "6"),
     'gcapture_6': ('COLMAP', "7"),
+    'gcapture_7': ('SPLAT', "8"),
 }
-_GCAPTURE_ICON_VERSION = 6   # increase when the appearance changes (cache folder)
+_GCAPTURE_ICON_VERSION = 8   # increase when the appearance changes (cache folder)
 _gcapture_previews = None
 
 
@@ -2744,6 +2766,7 @@ _GCAPTURE_COLOR_PREP = 'COLLECTION_COLOR_02'     # orange: Prepare
 _GCAPTURE_COLOR_CAMERAS = 'COLLECTION_COLOR_03'  # yellow: Cameras
 _GCAPTURE_COLOR_OUTPUT = 'COLLECTION_COLOR_04'   # green:  Render
 _GCAPTURE_COLOR_COLMAP = 'COLLECTION_COLOR_05'   # blue:   COLMAP export (v146)
+_GCAPTURE_COLOR_SPLAT = 'COLLECTION_COLOR_06'    # violet: Clean Splat (1.2.0)
 
 
 # ----------------------------------------------------------------------
@@ -4095,6 +4118,58 @@ def _gcapture_wt_status_export(context, s):
     return 'TODO', "Not exported yet (%s)" % os.path.basename(out_dir)
 
 
+def _cln_check(context, s):
+    """What step 8 is missing (red lines) and the paths."""
+    errs = []
+    splat = bpy.path.abspath(s.clean_splat_file or "").strip()
+    if not splat:
+        errs.append("Pick the trained splat (.ply)")
+    elif not os.path.isfile(splat):
+        errs.append("Splat file not found: %s" % os.path.basename(splat))
+    elif not splat.lower().endswith(".ply"):
+        errs.append("Only .ply splats can be cleaned")
+    ds = _exp_resolve_output_dir(s)
+    js = _cln_export_json_path(ds)
+    if not os.path.isfile(js):
+        errs.append("No %s - export the dataset first (step 7)"
+                    % os.path.basename(js))
+    elif not os.path.isfile(os.path.join(ds, "sparse", "0", "images.txt")):
+        errs.append("No cameras in %s - export the dataset first (step 7)"
+                    % os.path.basename(os.path.normpath(ds)))
+    stem = os.path.splitext(splat)[0]
+    return errs, {"splat": splat, "dataset": ds, "json": js,
+                  "out": stem + "_clean.ply"}
+
+
+def _gcapture_draw_clean(layout, context):
+    s = context.scene.gcapture_settings
+    _gcapture_progress_draw(layout, "gcapture.clean_splat")
+    layout = _gcapture_lock(layout)
+    row = layout.row(align=True)
+    row.prop(s, "clean_splat_file", text="")
+    row.operator("gcapture.clean_pick", text="", icon='FILEBROWSER')
+    errs, _ = _cln_check(context, s)
+    for e in errs:
+        r = layout.row()
+        r.alert = True
+        r.label(text=e, icon='ERROR')
+    col = layout.column()
+    col.scale_y = 1.4
+    col.enabled = not errs
+    col.operator("gcapture.clean_splat", icon='OUTLINER_OB_POINTCLOUD',
+                 depress=not errs and not s.clean_last_result)
+    if s.clean_last_result:
+        layout.label(text=s.clean_last_result,
+                     icon='ERROR' if "another scene version" in s.clean_last_result
+                     else 'CHECKMARK')
+
+
+def _gcapture_wt_status_clean(context, s):
+    if s.clean_last_result:
+        return 'DONE', s.clean_last_result
+    return 'TODO', "After training: pick the splat and clean it"
+
+
 _GCAPTURE_WT_STEPS = [
     dict(title="1. Scene & Camera", badge='gcapture_cam', icon='CAMERA_DATA',
          draw=_gcapture_draw_intro, status=_gcapture_wt_status_camera,
@@ -4209,6 +4284,18 @@ _GCAPTURE_WT_STEPS = [
                "Scale & Axes; the defaults fit most models.",
                "Copy/Move only appear if you render into your own folder "
                "structure."]),
+    dict(title="8. Clean Splat", badge='gcapture_7', icon='OUTLINER_OB_POINTCLOUD',
+         draw=_gcapture_draw_clean, status=_gcapture_wt_status_clean,
+         goal="After training: removes the splats in empty space (floaters) "
+              "from the trained splat.",
+         steps=["Export a .ply from LichtFeld Studio or Postshot.",
+                "Pick it with the folder button (opens in the dataset "
+                "folder).",
+                "Press Clean Splat."],
+         check="the result line shows how many splats were removed.",
+         note=["Writes <name>_clean.ply next to the splat - the original "
+               "stays untouched.",
+               "Use the scene version the dataset was exported from."]),
 ]
 
 _GCAPTURE_WT_STATUS_ICON = {'DONE': 'CHECKMARK', 'TODO': 'ERROR',
@@ -4576,12 +4663,24 @@ class GCAPTURE_PT_export(_GCAPTURE_SubPanel, Panel):
         _gcapture_draw_export(self.layout, context)
 
 
+class GCAPTURE_PT_clean(_GCAPTURE_SubPanel, Panel):
+    bl_idname = "GCAPTURE_PT_clean"
+    gcapture_badge = 'gcapture_7'
+    gcapture_icon = 'OUTLINER_OB_POINTCLOUD'
+    bl_label = "8. Clean Splat (after training)"
+    bl_order = 7
+    gcapture_color = _GCAPTURE_COLOR_SPLAT
+
+    def draw(self, context):
+        _gcapture_draw_clean(self.layout, context)
+
+
 class GCAPTURE_PT_advanced(_GCAPTURE_SubPanel, Panel):
     """Rarely used options + maintainer/license (collapsed)."""
     bl_idname = "GCAPTURE_PT_advanced"
     gcapture_icon = 'PREFERENCES'
     bl_label = "Advanced"
-    bl_order = 7
+    bl_order = 8
     bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
@@ -4604,6 +4703,9 @@ class GCAPTURE_PT_advanced(_GCAPTURE_SubPanel, Panel):
                         % (len(s.guides),
                            "y" if len(s.guides) == 1 else "ies",
                            total_objs))
+        cbox = layout.box()
+        cbox.label(text="Clean Splat", icon='OUTLINER_OB_POINTCLOUD')
+        cbox.prop(s, "clean_min_views")
         # Interior test only makes sense with custom guide meshes.
         if _gcapture_has_custom_guides(s):
             glbox.prop(s, "skip_interior")
@@ -5837,6 +5939,134 @@ class _ClnJob:
         return (self.viol >= min_views) | (self.seen == 0)
 
 
+class GCAPTURE_OT_clean_pick(Operator):
+    """Pick the trained splat (.ply) - the file browser opens in the dataset folder"""
+    bl_idname = "gcapture.clean_pick"
+    bl_label = "Pick Splat"
+    filepath: StringProperty(subtype='FILE_PATH')
+    filter_glob: StringProperty(default="*.ply", options={'HIDDEN'})
+
+    def invoke(self, context, event):
+        s = context.scene.gcapture_settings
+        cur = bpy.path.abspath(s.clean_splat_file or "")
+        self.filepath = (cur if os.path.isfile(cur)
+                         else _exp_resolve_output_dir(s) + os.sep)
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
+
+    def execute(self, context):
+        context.scene.gcapture_settings.clean_splat_file = self.filepath
+        return {'FINISHED'}
+
+
+class GCAPTURE_OT_clean_splat(Operator):
+    """Remove the splats in empty space: every camera of the dataset sees the
+    model's depth, and a splat in front of the surface, or seen by no camera,
+    goes. Writes <name>_clean.ply next to the splat - the original stays
+    untouched. Use the scene version the dataset was exported from"""
+    bl_idname = "gcapture.clean_splat"
+    bl_label = "Clean Splat"
+    bl_options = {'REGISTER'}
+
+    @classmethod
+    def poll(cls, context):
+        s = context.scene.gcapture_settings
+        return not _gcapture_busy() and not _cln_check(context, s)[0]
+
+    def _setup(self, context):
+        s = context.scene.gcapture_settings
+        errs, paths = _cln_check(context, s)
+        if errs:
+            raise ValueError(errs[0])
+        bfd, scale = _cln_load_transform(paths["json"])
+        views = _cln_dataset_views(paths["dataset"], bfd)
+        if not views:
+            raise ValueError("No cameras in the dataset - export it again (step 7)")
+        ply = _gcapture_ply_read(paths["splat"])
+        limit = _ExpGpuDepth._CS_WIDTH * 16384      # texture limit of the GPU
+        if len(ply["rows"]) > limit:
+            raise ValueError("Too many splats (%d) - at most %d can be cleaned"
+                             % (len(ply["rows"]), limit))
+        points, sigma = _cln_splat_points(ply, bfd, scale)
+        verts, tris = _cln_render_geometry(context)
+        self._ply, self._paths = ply, paths
+        self._min_views = s.clean_min_views
+        self._job = _ClnJob(verts, tris, points, sigma, views,
+                            use_gpu=not bpy.app.background)
+
+    def _finish(self, context):
+        s = context.scene.gcapture_settings
+        cut = self._job.result(self._min_views)
+        n, k = len(cut), int(cut.sum())
+        out = self._paths["out"]
+        comment = ("gcapture_clean removed=%d of=%d min_views=%d addon=%s"
+                   % (k, n, self._min_views,
+                      ".".join(str(v) for v in bl_info["version"])))
+        try:
+            _gcapture_ply_write(out, self._ply, ~cut, comment)
+        except OSError as exc:
+            self.report({'ERROR'}, "Could not write %s: %s - close it in other "
+                        "programs" % (os.path.basename(out), exc.strerror or exc))
+            return {'CANCELLED'}
+        msg = "Removed %d of %d splats (%.1f %%) - %s" % (
+            k, n, 100.0 * k / max(n, 1), os.path.basename(out))
+        if k > n / 2:
+            msg += " - more than half: splat from another scene version?"
+            self.report({'WARNING'}, msg)
+        else:
+            self.report({'INFO'}, msg)
+        s.clean_last_result = msg
+        print("[Gaussian Render Capture] Clean Splat (%s): %s"
+              % (self._job.mode, msg))
+        return {'FINISHED'}
+
+    def execute(self, context):
+        try:
+            self._setup(context)
+        except (ValueError, OSError, RuntimeError) as exc:
+            self.report({'ERROR'}, str(exc))
+            return {'CANCELLED'}
+        while self._job.done < self._job.total:
+            self._job.step()
+        return self._finish(context)
+
+    def invoke(self, context, event):
+        try:
+            self._setup(context)
+        except (ValueError, OSError, RuntimeError) as exc:
+            self.report({'ERROR'}, str(exc))
+            return {'CANCELLED'}
+        wm = context.window_manager
+        self._timer = wm.event_timer_add(0.01, window=context.window)
+        wm.modal_handler_add(self)
+        return {'RUNNING_MODAL'}
+
+    def modal(self, context, event):
+        if event.type == 'ESC':
+            self._cleanup(context)
+            self.report({'WARNING'}, "Clean Splat cancelled - nothing written.")
+            return {'CANCELLED'}
+        if event.type != 'TIMER':
+            return {'PASS_THROUGH'}
+        job = self._job
+        t0 = time.time()
+        while job.done < job.total and time.time() - t0 < 0.1:
+            job.step()
+        _gcapture_progress_set("gcapture.clean_splat", job.done / job.total,
+                               "Clean Splat: camera %d/%d (%s)"
+                               % (job.done, job.total, job.mode))
+        if job.done < job.total:
+            return {'RUNNING_MODAL'}
+        self._cleanup(context)
+        return self._finish(context)
+
+    def _cleanup(self, context):
+        if getattr(self, "_timer", None):
+            context.window_manager.event_timer_remove(self._timer)
+            self._timer = None
+        _gcapture_progress_clear("gcapture.clean_splat")
+
+
 def _exp_sample_face_points(objs, count, scale, W, world_out=None,
                             crop_bounds=None, colors_out=None):
     """Distributes 'count' points area-weighted over the surfaces of the
@@ -6885,6 +7115,8 @@ classes = (
     GCAPTURE_OT_save_version,
     GCAPTURE_OT_walkthrough_nav,
     GCAPTURE_OT_walkthrough_exit,
+    GCAPTURE_OT_clean_pick,
+    GCAPTURE_OT_clean_splat,
     GCAPTURE_UL_guides,
     GCAPTURE_UL_colls,
     GCAPTURE_PT_panel,
@@ -6895,6 +7127,7 @@ classes = (
     GCAPTURE_PT_build,
     GCAPTURE_PT_render,
     GCAPTURE_PT_export,
+    GCAPTURE_PT_clean,
     GCAPTURE_PT_advanced,
 )
 
