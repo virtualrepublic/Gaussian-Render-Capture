@@ -5601,6 +5601,134 @@ def _cln_render_geometry(context):
             np.vstack(tris).astype(np.int32))
 
 
+_CLN_TOL_REL = 0.01      # tolerance relative to the depth
+_CLN_TOL_SIZE = 2e-3     # absolute tolerance: share of the model size
+_CLN_CPU_RES = 256       # depth map without GPU (ray cast per pixel)
+
+
+def _cln_splat_points(ply, bfd, scale):
+    """Splat centres in Blender world space and extent sigma (largest axis,
+    Blender units). Without scale_* sigma is 0."""
+    names, rows = ply["names"], ply["rows"]
+    xyz = rows[:, [names.index(c) for c in ("x", "y", "z")]].astype(np.float64)
+    mat = np.array(bfd, dtype=np.float64)
+    points = xyz @ mat[:3, :3].T + mat[:3, 3]
+    idx = [names.index("scale_%d" % i) for i in range(3)
+           if "scale_%d" % i in names]
+    if len(idx) == 3:
+        sigma = np.exp(rows[:, idx].astype(np.float64)).max(axis=1) / scale
+    else:
+        sigma = np.zeros(len(points))
+    return points, sigma
+
+
+def _cln_camera_frame(pos, fwd, fov):
+    """Camera axes as in _ExpGpuDepth._render (roll does not matter, only consistency)."""
+    q = fwd.to_track_quat('-Z', 'Y')
+    return (np.array(pos, dtype=np.float64),
+            np.array(q @ Vector((1.0, 0.0, 0.0)), dtype=np.float64),
+            np.array(q @ Vector((0.0, 1.0, 0.0)), dtype=np.float64),
+            np.array(fwd.normalized(), dtype=np.float64),
+            1.0 / math.tan(fov / 2.0))
+
+
+def _cln_depth_cpu(bvh, frame, res):
+    """Linear depth per pixel by ray casting (row 0 = bottom, inf = nothing)."""
+    pos, right, up, fwd, f = frame
+    origin = Vector(pos)
+    c = (np.arange(res) + 0.5) / res * 2.0 - 1.0
+    lin = np.full((res, res), np.inf)
+    for py in range(res):
+        row_dir = fwd + c[py] * up / f
+        for px in range(res):
+            d = row_dir + c[px] * right / f
+            hit = bvh.ray_cast(origin, Vector(d))
+            if hit[0] is not None:
+                lin[py, px] = float(np.dot(np.array(hit[0]) - pos, fwd))
+    return lin
+
+
+def _cln_judge(points, sigma, lin, frame, near, tol_abs):
+    """The same rule as _CLN_CARVE_COMPUTE_SRC: (in front of the surface, in the
+    image) per splat. Nearest depth of the 3x3 neighbourhood, background = infinite."""
+    pos, right, up, fwd, f = frame
+    res = lin.shape[0]
+    rel = points - pos
+    d = rel @ fwd
+    safe = np.where(d > near, d, 1.0)
+    xn = (rel @ right) / safe * f
+    yn = (rel @ up) / safe * f
+    seen = (d > near) & (np.abs(xn) <= 1.0) & (np.abs(yn) <= 1.0)
+    px = np.clip(((xn + 1.0) * 0.5 * res).astype(np.int64), 0, res - 1)
+    py = np.clip(((yn + 1.0) * 0.5 * res).astype(np.int64), 0, res - 1)
+    fin = np.where(np.isfinite(lin), lin, 1e30)
+    pad = np.pad(fin, 1, mode='edge')
+    zmin = fin.copy()
+    for dy in range(3):
+        for dx in range(3):
+            zmin = np.minimum(zmin, pad[dy:dy + res, dx:dx + res])
+    z = zmin[py, px]
+    front = seen & (d + 3.0 * sigma + _CLN_TOL_REL * d + tol_abs < z)
+    return front, seen
+
+
+class _ClnJob:
+    """One cleaning run: draw the depth per camera and count per splat how often
+    it lies in front of the surface and how often in the image. GPU if
+    possible; otherwise ray casting (blender --background, render nodes)."""
+
+    def __init__(self, verts, tris, points, sigma, views, use_gpu):
+        self.points, self.sigma, self.views = points, sigma, views
+        self.total, self.done = len(views), 0
+        lo, hi = verts.min(axis=0), verts.max(axis=0)
+        self.size = float(np.linalg.norm(hi - lo)) or 1.0
+        self.center = (lo + hi) / 2.0
+        self.radius = float(np.linalg.norm(verts - self.center, axis=1).max()) or 1.0
+        self.tol_abs = _CLN_TOL_SIZE * self.size
+        self.viol = np.zeros(len(points), dtype=np.int32)
+        self.seen = np.zeros(len(points), dtype=np.int32)
+        self.gpu = None
+        if use_gpu:
+            try:
+                self.gpu = _ExpGpuDepth(None, geometry=(verts, tris))
+                self.gpu.carve_begin(points, sigma)
+            except Exception as exc:
+                print("[Gaussian Render Capture] GPU carving unavailable, "
+                      "using ray casting:", exc)
+                self.gpu = None
+        self.bvh = None
+        if self.gpu is None:
+            self.bvh = BVHTree.FromPolygons(verts.tolist(), tris.tolist(),
+                                            all_triangles=True)
+
+    @property
+    def mode(self):
+        return "GPU" if self.gpu is not None else "ray casting"
+
+    def _near(self, pos):
+        dist = float(np.linalg.norm(np.array(pos) - self.center))
+        return max(self.size * 1e-4, dist - self.radius * 1.01)
+
+    def step(self):
+        pos, fwd, fov = self.views[self.done]
+        if self.gpu is not None:
+            self.gpu.carve_camera(pos, fwd, fov, self.tol_abs)
+        else:
+            frame = _cln_camera_frame(pos, fwd, fov)
+            lin = _cln_depth_cpu(self.bvh, frame, _CLN_CPU_RES)
+            front, seen = _cln_judge(self.points, self.sigma, lin, frame,
+                                     self._near(pos), self.tol_abs)
+            self.viol += front
+            self.seen += seen
+        self.done += 1
+
+    def result(self, min_views):
+        """bool per splat: remove."""
+        if self.gpu is not None:
+            self.viol, self.seen = self.gpu.carve_result()
+        return (self.viol >= min_views) | (self.seen == 0)
+
+
 def _exp_sample_face_points(objs, count, scale, W, world_out=None,
                             crop_bounds=None, colors_out=None):
     """Distributes 'count' points area-weighted over the surfaces of the
