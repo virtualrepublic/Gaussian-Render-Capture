@@ -4167,7 +4167,13 @@ def _gcapture_draw_clean(layout, context):
 def _gcapture_wt_status_clean(context, s):
     if s.clean_last_result:
         return 'DONE', s.clean_last_result
-    return 'TODO', "After training: pick the splat and clean it"
+    return 'OPTIONAL', "Optional, after training: pick the splat and clean it"
+
+
+# Steps whose draw function shows a progress bar; the guide draws them
+# outside its locked column (1.2.0).
+_GCAPTURE_WT_PROGRESS_DRAWS = (_gcapture_draw_build, _gcapture_draw_export,
+                               _gcapture_draw_clean)
 
 
 _GCAPTURE_WT_STEPS = [
@@ -4438,7 +4444,7 @@ def _gcapture_draw_walkthrough(layout, context):
 
     _gcapture_wt_draw_text(card, context, step)
     card.separator()
-    if step['draw'] in (_gcapture_draw_build, _gcapture_draw_export):
+    if step['draw'] in _GCAPTURE_WT_PROGRESS_DRAWS:
         step['draw'](card.column(), context)   # lock itself, bar stays free
     else:
         step['draw'](_gcapture_lock(card), context)
@@ -5609,7 +5615,7 @@ def _gcapture_ply_read(path):
             line = f.readline()
             if not line:
                 raise ValueError("PLY header has no end_header")
-            text = line.decode("ascii", "replace").strip()
+            text = line.decode("ascii", "surrogateescape").strip()
             if text == "end_header":
                 break
             header.append(text)
@@ -5662,7 +5668,7 @@ def _gcapture_ply_write(path, ply, keep, comment):
     tmp = path + ".part"
     try:
         with open(tmp, "wb") as f:
-            f.write(("\n".join(out) + "\n").encode("ascii"))
+            f.write(("\n".join(out) + "\n").encode("ascii", "surrogateescape"))
             f.write(np.ascontiguousarray(rows, dtype="<f4").tobytes())
         os.replace(tmp, path)
     finally:
@@ -5738,10 +5744,12 @@ _CLN_GEOM_TYPES = {'MESH', 'CURVE', 'SURFACE', 'FONT', 'META'}
 
 def _cln_render_geometry(context):
     """Everything that is rendered, as triangles in world coordinates -- not
-    only the look target: a rendered floor is not empty space. Includes
-    instances (collection instances, Geometry Nodes) and objects that are
-    only hidden in the viewport. Without the camera sphere, guides, crop
-    object, Capture_Rig and hide_render objects."""
+    only the look target: a rendered floor is not empty space. Evaluated as
+    for the render: objects hidden in the viewport (eye or monitor icon) are
+    shown, modifiers that are on for the render only are switched on, and
+    subdivision uses its render levels -- all restored afterwards. Includes
+    instances (collection instances, Geometry Nodes). Without the camera
+    sphere, guides, crop object, Capture_Rig and hide_render objects."""
     scene = context.scene
     s = scene.gcapture_settings
     excl = set()
@@ -5756,59 +5764,91 @@ def _cln_render_geometry(context):
     rig = bpy.data.collections.get(_GCAPTURE_RIG_COLL)
     if rig is not None:
         excl.update(o.name for o in rig.all_objects)
-    dg = context.evaluated_depsgraph_get()
-    cache, verts, tris = {}, [], []
-    off = 0
-
-    def add(ob_eval, key, mw):
-        nonlocal off
-        if key not in cache:
-            co = tri = None
-            me = ob_eval.to_mesh()
-            if me is not None:
-                try:
-                    me.calc_loop_triangles()
-                    if len(me.vertices) and len(me.loop_triangles):
-                        co = np.empty(len(me.vertices) * 3, dtype=np.float32)
-                        me.vertices.foreach_get("co", co)
-                        co = co.reshape(-1, 3)
-                        tri = np.empty(len(me.loop_triangles) * 3, dtype=np.int32)
-                        me.loop_triangles.foreach_get("vertices", tri)
-                        tri = tri.reshape(-1, 3)
-                finally:
-                    ob_eval.to_mesh_clear()
-            cache[key] = (co, tri)
-        co, tri = cache[key]
-        if co is None:
-            return
-        mwn = np.array(mw, dtype=np.float32)
-        verts.append(co @ mwn[:3, :3].T + mwn[:3, 3])
-        tris.append(tri + off)
-        off += len(co)
-
-    seen = set()
-    for inst in dg.object_instances:
-        ob = inst.object
-        orig = ob.original
-        if ob.type not in _CLN_GEOM_TYPES or orig.hide_render or orig.name in excl:
-            continue
-        if not inst.is_instance:
-            seen.add(orig.name)
-        key = orig.name + "|" + (ob.data.name if ob.data is not None else "")
-        add(ob, key, inst.matrix_world)
-    # Objects hidden only in the viewport are missing from the depsgraph --
-    # but they are rendered. Added as single objects, without instances.
-    for orig in scene.objects:
-        if (orig.name in seen or orig.name in excl or orig.hide_render
-                or orig.type not in _CLN_GEOM_TYPES):
-            continue
-        if orig.visible_get():
-            continue
-        add(orig.evaluated_get(dg), orig.name + "|hidden", orig.matrix_world)
+    view_layer = context.view_layer
+    undo = []                     # (restore function) in reverse order
+    try:
+        for o in scene.objects:
+            if o.hide_render or o.name in excl:
+                continue
+            if o.hide_viewport:
+                o.hide_viewport = False
+                undo.append(lambda o=o: setattr(o, "hide_viewport", True))
+            try:
+                if o.hide_get(view_layer=view_layer):
+                    o.hide_set(False, view_layer=view_layer)
+                    undo.append(lambda o=o: o.hide_set(True, view_layer=view_layer))
+            except RuntimeError:  # not in this view layer
+                pass
+            for md in o.modifiers:
+                if md.show_render and not md.show_viewport:
+                    md.show_viewport = True
+                    undo.append(lambda md=md: setattr(md, "show_viewport", False))
+                if md.type in {'SUBSURF', 'MULTIRES'} and md.levels != md.render_levels:
+                    old = md.levels
+                    md.levels = md.render_levels
+                    undo.append(lambda md=md, old=old: setattr(md, "levels", old))
+        if undo:
+            view_layer.update()
+        dg = context.evaluated_depsgraph_get()
+        cache, verts, tris = {}, [], []
+        off = 0
+        for inst in dg.object_instances:
+            ob = inst.object
+            orig = ob.original
+            if ob.type not in _CLN_GEOM_TYPES or orig.hide_render or orig.name in excl:
+                continue
+            # Key by the evaluated data: Geometry Nodes instances of different
+            # generated meshes all carry the same temporary name.
+            key = (ob.data.as_pointer() if ob.data is not None
+                   else hash(orig.name))
+            if key not in cache:
+                co = tri = None
+                me = ob.to_mesh()
+                if me is not None:
+                    try:
+                        me.calc_loop_triangles()
+                        if len(me.vertices) and len(me.loop_triangles):
+                            co = np.empty(len(me.vertices) * 3, dtype=np.float32)
+                            me.vertices.foreach_get("co", co)
+                            co = co.reshape(-1, 3)
+                            tri = np.empty(len(me.loop_triangles) * 3, dtype=np.int32)
+                            me.loop_triangles.foreach_get("vertices", tri)
+                            tri = tri.reshape(-1, 3)
+                    finally:
+                        ob.to_mesh_clear()
+                cache[key] = (co, tri)
+            co, tri = cache[key]
+            if co is None:
+                continue
+            mwn = np.array(inst.matrix_world, dtype=np.float32)
+            verts.append(co @ mwn[:3, :3].T + mwn[:3, 3])
+            tris.append(tri + off)
+            off += len(co)
+    finally:
+        for fn in reversed(undo):
+            fn()
+        if undo:
+            view_layer.update()
     if not verts:
         raise ValueError("No rendered geometry in the scene")
     return (np.vstack(verts).astype(np.float32),
             np.vstack(tris).astype(np.int32))
+
+
+def _cln_model_size(context, verts):
+    """Bounding-box diagonal of the look target (step 2) -- the scale of the
+    absolute tolerance. A big rendered floor must not widen it. Without a
+    look target: all rendered geometry."""
+    pts = []
+    for it in context.scene.gcapture_settings.sph_target_colls:
+        if it.coll is None:
+            continue
+        for o in it.coll.all_objects:
+            if o.type in _CLN_GEOM_TYPES and not o.hide_render:
+                mw = o.matrix_world
+                pts.extend(tuple(mw @ Vector(c)) for c in o.bound_box)
+    arr = np.array(pts) if pts else verts
+    return float(np.linalg.norm(arr.max(axis=0) - arr.min(axis=0))) or 1.0
 
 
 _CLN_TOL_REL = 0.01      # tolerance relative to the depth
@@ -5892,14 +5932,15 @@ class _ClnJob:
     it lies in front of the surface and how often in the image. GPU if
     possible; otherwise ray casting (blender --background, render nodes)."""
 
-    def __init__(self, verts, tris, points, sigma, views, use_gpu):
+    def __init__(self, verts, tris, points, sigma, views, use_gpu, size=None):
         self.points, self.sigma, self.views = points, sigma, views
         self.total, self.done = len(views), 0
         lo, hi = verts.min(axis=0), verts.max(axis=0)
         self.size = float(np.linalg.norm(hi - lo)) or 1.0
         self.center = (lo + hi) / 2.0
         self.radius = float(np.linalg.norm(verts - self.center, axis=1).max()) or 1.0
-        self.tol_abs = _CLN_TOL_SIZE * self.size
+        # tolerance from the model (look target), the rest from all geometry
+        self.tol_abs = _CLN_TOL_SIZE * (size or self.size)
         self.viol = np.zeros(len(points), dtype=np.int32)
         self.seen = np.zeros(len(points), dtype=np.int32)
         self.gpu = None
@@ -5998,11 +6039,19 @@ class GCAPTURE_OT_clean_splat(Operator):
         self._ply, self._paths = ply, paths
         self._min_views = s.clean_min_views
         self._job = _ClnJob(verts, tris, points, sigma, views,
-                            use_gpu=not bpy.app.background)
+                            use_gpu=not bpy.app.background,
+                            size=_cln_model_size(context, verts))
+
+    def _release(self):
+        """Drop splats, geometry and GPU buffers -- Blender may keep the
+        operator instance after the run."""
+        self._job = None
+        self._ply = None
 
     def _finish(self, context):
         s = context.scene.gcapture_settings
         cut = self._job.result(self._min_views)
+        mode = self._job.mode
         n, k = len(cut), int(cut.sum())
         out = self._paths["out"]
         comment = ("gcapture_clean removed=%d of=%d min_views=%d addon=%s"
@@ -6011,9 +6060,11 @@ class GCAPTURE_OT_clean_splat(Operator):
         try:
             _gcapture_ply_write(out, self._ply, ~cut, comment)
         except OSError as exc:
+            self._release()
             self.report({'ERROR'}, "Could not write %s: %s - close it in other "
                         "programs" % (os.path.basename(out), exc.strerror or exc))
             return {'CANCELLED'}
+        self._release()
         msg = "Removed %d of %d splats (%.1f %%) - %s" % (
             k, n, 100.0 * k / max(n, 1), os.path.basename(out))
         if k > n / 2:
@@ -6021,27 +6072,34 @@ class GCAPTURE_OT_clean_splat(Operator):
             self.report({'WARNING'}, msg)
         else:
             self.report({'INFO'}, msg)
-        s.clean_last_result = msg
-        print("[Gaussian Render Capture] Clean Splat (%s): %s"
-              % (self._job.mode, msg))
+        s.clean_last_result = "%s (%s)" % (msg, mode)
+        print("[Gaussian Render Capture] Clean Splat (%s): %s" % (mode, msg))
         return {'FINISHED'}
 
+    def _fail(self, context, exc):
+        """Any error during a run: stop cleanly, report, keep no old result."""
+        self._cleanup(context)
+        self._release()
+        context.scene.gcapture_settings.clean_last_result = ""
+        self.report({'ERROR'}, "Clean Splat failed: %s" % exc)
+        return {'CANCELLED'}
+
     def execute(self, context):
+        context.scene.gcapture_settings.clean_last_result = ""
         try:
             self._setup(context)
-        except (ValueError, OSError, RuntimeError) as exc:
-            self.report({'ERROR'}, str(exc))
-            return {'CANCELLED'}
-        while self._job.done < self._job.total:
-            self._job.step()
-        return self._finish(context)
+            while self._job.done < self._job.total:
+                self._job.step()
+            return self._finish(context)
+        except Exception as exc:
+            return self._fail(context, exc)
 
     def invoke(self, context, event):
+        context.scene.gcapture_settings.clean_last_result = ""
         try:
             self._setup(context)
-        except (ValueError, OSError, RuntimeError) as exc:
-            self.report({'ERROR'}, str(exc))
-            return {'CANCELLED'}
+        except Exception as exc:
+            return self._fail(context, exc)
         wm = context.window_manager
         self._timer = wm.event_timer_add(0.01, window=context.window)
         wm.modal_handler_add(self)
@@ -6050,21 +6108,25 @@ class GCAPTURE_OT_clean_splat(Operator):
     def modal(self, context, event):
         if event.type == 'ESC':
             self._cleanup(context)
+            self._release()
             self.report({'WARNING'}, "Clean Splat cancelled - nothing written.")
             return {'CANCELLED'}
         if event.type != 'TIMER':
             return {'PASS_THROUGH'}
-        job = self._job
-        t0 = time.time()
-        while job.done < job.total and time.time() - t0 < 0.1:
-            job.step()
-        _gcapture_progress_set("gcapture.clean_splat", job.done / job.total,
-                               "Clean Splat: camera %d/%d (%s)"
-                               % (job.done, job.total, job.mode))
-        if job.done < job.total:
-            return {'RUNNING_MODAL'}
-        self._cleanup(context)
-        return self._finish(context)
+        try:
+            job = self._job
+            t0 = time.time()
+            while job.done < job.total and time.time() - t0 < 0.1:
+                job.step()
+            _gcapture_progress_set("gcapture.clean_splat", job.done / job.total,
+                                   "Clean Splat: camera %d/%d (%s)"
+                                   % (job.done, job.total, job.mode))
+            if job.done < job.total:
+                return {'RUNNING_MODAL'}
+            self._cleanup(context)
+            return self._finish(context)
+        except Exception as exc:
+            return self._fail(context, exc)
 
     def _cleanup(self, context):
         if getattr(self, "_timer", None):
