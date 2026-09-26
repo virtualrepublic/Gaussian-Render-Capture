@@ -37,7 +37,7 @@ through vibe coding with Anthropic Claude (Claude Code), which wrote the
 code and the tests. Concept, design decisions, tests and the acceptance
 of every version: the author.
 
-Code comments are in German.
+Code comments are in English.
 =========================================================================
 """
 
@@ -74,10 +74,10 @@ from bpy.types import Operator, Panel, PropertyGroup
 
 
 def _gcapture_on_param_change(settings, context):
-    """Wird bei Aenderung interaktiver Parameter (z. B. Focal Length)
-    aufgerufen. Setzt die Brennweite sofort auf die (bereits existierende)
-    Kamera -- unabhaengig vom Live-Modus, da die Brennweite nur den
-    Kamera-Datenblock betrifft und kein Neu-Backen der Posen erfordert."""
+    """Called when interactive parameters change (e.g. Focal Length).
+    Applies the focal length to the (already existing) camera immediately
+    -- regardless of live mode, since the focal length only affects the
+    camera data block and does not require re-baking the poses."""
     cam = bpy.data.objects.get(settings.camera_name)
     if cam and cam.type == 'CAMERA':
         cam.data.lens_unit = 'MILLIMETERS'
@@ -85,12 +85,12 @@ def _gcapture_on_param_change(settings, context):
 
 
 # ----------------------------------------------------------------------
-# Einstellungen (im N-Panel editierbar, in der .blend gespeichert)
+# Settings (editable in the N panel, stored in the .blend)
 # ----------------------------------------------------------------------
 def _gcapture_on_guide_index_change(self, context):
-    """Wird aufgerufen, wenn in der Guide-Liste ein Eintrag ausgewaehlt
-    wird. Selektiert die zum Eintrag gehoerenden Objekte im Outliner/
-    Viewport und macht das erste zum aktiven Objekt."""
+    """Called when an entry in the guide list is selected. Selects the
+    objects belonging to the entry in the Outliner/viewport and makes
+    the first one the active object."""
     s = context.scene.gcapture_settings
     if not (0 <= s.guide_index < len(s.guides)):
         return
@@ -99,21 +99,21 @@ def _gcapture_on_guide_index_change(self, context):
     if not objs:
         return
     try:
-        # Bestehende Auswahl aufheben, dann die Eintragsobjekte selektieren.
+        # Clear the existing selection, then select the entry's objects.
         for o in context.view_layer.objects:
             o.select_set(False)
         for o in objs:
             try:
                 o.select_set(True)
             except RuntimeError:
-                pass  # Objekt evtl. in ausgeblendeter Collection
+                pass  # object may be in a hidden collection
         context.view_layer.objects.active = objs[0]
     except Exception:
         pass
 
 
 class GCAPTURE_GuideObjRef(PropertyGroup):
-    """Verweis auf ein einzelnes Mesh-Objekt innerhalb eines Guide-Eintrags."""
+    """Reference to a single mesh object within a guide entry."""
     obj: PointerProperty(
         name="Object",
         type=bpy.types.Object,
@@ -122,9 +122,9 @@ class GCAPTURE_GuideObjRef(PropertyGroup):
 
 
 class GCAPTURE_GuideItem(PropertyGroup):
-    """Ein Leitgitter-Eintrag: editierbares Label + eine oder mehrere
-    Mesh-Objekte. Das Label ist ein reiner Anzeige-Alias; die echten
-    Objektnamen bleiben unveraendert."""
+    """A guide mesh entry: editable label + one or more mesh objects.
+    The label is purely a display alias; the real object names stay
+    unchanged."""
     label: StringProperty(
         name="Label",
         description="Display name for this guide entry (alias only -- does "
@@ -135,29 +135,29 @@ class GCAPTURE_GuideItem(PropertyGroup):
 
 
 class GCAPTURE_CollItem(PropertyGroup):
-    """Ein Eintrag in der Ziel-Collection-Liste fuer die Auto-Skalierung
-    der Kamera-Sphere."""
+    """An entry in the target collection list for auto-scaling the
+    camera sphere."""
     coll: PointerProperty(
         name="Collection",
         type=bpy.types.Collection,
     )
 
 
-# Relative Pfade (//...) fuer Ordner-Properties erlauben (v107). Die Option
-# gibt es erst ab Blender 4.5; aeltere Versionen verweigern sonst die
-# Registrierung des ganzen Addons (v110-Fix).
+# Allow relative paths (//...) for folder properties (v107). The option
+# only exists from Blender 4.5 on; older versions would otherwise refuse
+# to register the whole add-on (v110 fix).
 _GCAPTURE_PATH_OPTIONS = ({'PATH_SUPPORTS_BLEND_RELATIVE'}
                      if bpy.app.version >= (4, 5, 0) else set())
 
 
 def _gcapture_on_resolution(settings, context):
-    """Aufloesung geaendert: anwenden und als bestaetigt merken (v140)."""
+    """Resolution changed: apply it and remember it as confirmed (v140)."""
     context.scene["gcapture_res_ok"] = True
     _gcapture_on_render_setting(settings, context)
 
 
 def _gcapture_on_render_setting(settings, context):
-    """Aenderung einer Render-Einstellung sofort anwenden (v127)."""
+    """Apply a change to a render setting immediately (v127)."""
     try:
         _gcapture_apply_render_setup(context.scene, settings)
     except Exception as exc:
@@ -340,8 +340,8 @@ class GCAPTURE_Settings(PropertyGroup):
                 "Only the objects named in Point Objects")],
         default='TARGETS',
     )
-    # Vom Addon zuletzt eingetragene Pfade (v129): stimmt ein Feld damit
-    # ueberein, folgt es weiter automatisch.
+    # Paths last entered by the add-on (v129): if a field matches them,
+    # it keeps following automatically.
     exp_output_dir_auto: StringProperty(options={'HIDDEN'})
     exp_image_dir_auto: StringProperty(options={'HIDDEN'})
     exp_reuse_points: BoolProperty(
@@ -593,10 +593,10 @@ class GCAPTURE_Settings(PropertyGroup):
 
 
 # ----------------------------------------------------------------------
-# Kernlogik
+# Core logic
 # ----------------------------------------------------------------------
 def face_centers_and_normals(obj):
-    """Pro Face (zentrum_welt, normale_welt), evaluiert inkl. Modifier."""
+    """Per face (world center, world normal), evaluated incl. modifiers."""
     depsgraph = bpy.context.evaluated_depsgraph_get()
     eval_obj = obj.evaluated_get(depsgraph)
 
@@ -622,7 +622,7 @@ _GCAPTURE_RIG_COLL = "Capture_Rig"
 
 
 def _gcapture_rig_collection(scene):
-    """Eigene Collection fuer Kamera und Camera Sphere (v136)."""
+    """Dedicated collection for the camera and Camera Sphere (v136)."""
     coll = bpy.data.collections.get(_GCAPTURE_RIG_COLL)
     if coll is None or coll.library is not None:
         coll = bpy.data.collections.new(_GCAPTURE_RIG_COLL)
@@ -632,7 +632,7 @@ def _gcapture_rig_collection(scene):
 
 
 def _gcapture_move_to_rig(scene, obj):
-    """Objekt nur noch in der Rig-Collection fuehren (v136)."""
+    """Keep the object only in the rig collection (v136)."""
     if obj is None:
         return
     coll = _gcapture_rig_collection(scene)
@@ -655,8 +655,8 @@ def get_or_create_camera(name):
 
 
 def _gcapture_apply_render_setup(scene, s):
-    """Render-Einstellungen aus Schritt 5 auf die Szene anwenden (v127) --
-    dasselbe, was Build am Ende tut, soweit Kamera/Keyframes schon da sind."""
+    """Apply the render settings from step 5 to the scene (v127) --
+    the same as Build does at the end, as far as camera/keyframes exist."""
     cam = bpy.data.objects.get(s.camera_name)
     if cam is not None and cam.type != 'CAMERA':
         cam = None
@@ -681,21 +681,21 @@ def _gcapture_apply_render_setup(scene, s):
 
 
 def iter_action_fcurves(obj):
-    """Liefert alle F-Curves der Action von 'obj' -- versionssicher.
+    """Returns all F-curves of the action of 'obj' -- version-safe.
 
-    Blender 4.4+ hat 'Slotted Actions' eingefuehrt: action.fcurves wurde
-    in einen Channelbag pro Slot verschoben und ist in Blender 5.0 ganz
-    entfernt. Diese Funktion deckt beide Welten ab:
-      1. neu: ueber action.layers[].strips[].channelbag(slot).fcurves
-      2. alt: ueber action.fcurves (Legacy, < 4.4)
+    Blender 4.4+ introduced 'Slotted Actions': action.fcurves was moved
+    into a channelbag per slot and is removed entirely in Blender 5.0.
+    This function covers both worlds:
+      1. new: via action.layers[].strips[].channelbag(slot).fcurves
+      2. old: via action.fcurves (legacy, < 4.4)
     """
     ad = obj.animation_data
     if not ad or not ad.action:
         return []
     action = ad.action
 
-    # --- Neuer Weg (Slotted Actions, 4.4+/5.x) ---
-    # Bevorzugt die offizielle Helferfunktion, falls vorhanden.
+    # --- New way (Slotted Actions, 4.4+/5.x) ---
+    # Prefers the official helper function if available.
     try:
         from bpy_extras import anim_utils
         slot = getattr(ad, "action_slot", None)
@@ -707,7 +707,7 @@ def iter_action_fcurves(obj):
     except Exception:
         pass
 
-    # Manueller Weg ueber die Layer/Strip/Channelbag-Hierarchie.
+    # Manual way via the layer/strip/channelbag hierarchy.
     try:
         if len(action.layers) > 0:
             strip = action.layers[0].strips[0]
@@ -716,7 +716,7 @@ def iter_action_fcurves(obj):
                 cbag = strip.channelbag(slot)
                 if cbag is not None:
                     return list(cbag.fcurves)
-            # Falls kein Slot greifbar: alle Channelbags des Strips nehmen.
+            # If no slot is available: take all channelbags of the strip.
             bags = getattr(strip, "channelbags", None)
             if bags:
                 fcurves = []
@@ -726,7 +726,7 @@ def iter_action_fcurves(obj):
     except Exception:
         pass
 
-    # --- Legacy-Weg (< 4.4) ---
+    # --- Legacy way (< 4.4) ---
     if hasattr(action, "fcurves"):
         try:
             return list(action.fcurves)
@@ -737,15 +737,15 @@ def iter_action_fcurves(obj):
 
 
 def setup_guide_object(obj, settings):
-    """Zeigt das Leitgitter als Drahtgitter und nimmt es aus dem Render.
-    Seit v93 immer (vorher abschaltbar) und ohne Umbenennen -- rename_guide,
-    guide_target_name und setup_guide_display bleiben nur als Properties
-    fuer alte .blend-Dateien bestehen. Gibt den Objektnamen zurueck."""
-    obj.display_type = 'WIRE'      # Viewport: nur Drahtgitter
-    obj.hide_render = True          # vom finalen Rendering ausschliessen
+    """Shows the guide mesh as wireframe and removes it from the render.
+    Always since v93 (previously optional) and without renaming --
+    rename_guide, guide_target_name and setup_guide_display remain only as
+    properties for old .blend files. Returns the object name."""
+    obj.display_type = 'WIRE'      # Viewport: wireframe only
+    obj.hide_render = True          # exclude from the final render
     obj.show_in_front = False
-    # Zusaetzlich aus allen Strahlen-Sichtbarkeiten nehmen, damit es
-    # auch indirekt (Reflexionen/Schatten) nicht beitraegt.
+    # Additionally remove it from all ray visibilities so that it does
+    # not contribute indirectly either (reflections/shadows).
     try:
         obj.visible_camera = False
         obj.visible_diffuse = False
@@ -754,15 +754,15 @@ def setup_guide_object(obj, settings):
         obj.visible_volume_scatter = False
         obj.visible_shadow = False
     except AttributeError:
-        # Diese Properties existieren nur bei aktiver Cycles-Engine.
+        # These properties exist only with the Cycles engine active.
         pass
 
     return obj.name
 
 
 def _gcapture_has_custom_guides(s):
-    """True, wenn die Guide-Liste eigene Leitgitter enthaelt (andere als die
-    von 'Camera Sphere' erzeugte Sphere)."""
+    """True if the guide list contains its own guide meshes (other than the
+    sphere created by 'Camera Sphere')."""
     if not s.use_guide_list:
         return False
     for item in s.guides:
@@ -774,16 +774,16 @@ def _gcapture_has_custom_guides(s):
 
 
 def _collect_guide_objects(context, active_obj):
-    """Liefert die Liste der zu verarbeitenden Leitgitter-Objekte.
-    Bei aktivierter Guide-List die Collection, sonst das aktive Objekt."""
+    """Returns the list of guide mesh objects to process.
+    With the guide list enabled the collection, otherwise the active object."""
     s = context.scene.gcapture_settings
     if s.use_guide_list and len(s.guides) > 0:
         objs = []
         for item in s.guides:
             for ref in item.objects:
                 o = ref.obj
-                # Nur Objekte der aktuellen Szene (im Viewport geloeschte
-                # Leitgitter koennen als verwaiste Daten weiterleben, v94).
+                # Only objects of the current scene (guide meshes deleted in the
+                # viewport can live on as orphaned data, v94).
                 if (o and o.type == 'MESH' and o not in objs
                         and o.name in context.scene.objects):
                     objs.append(o)
@@ -793,16 +793,16 @@ def _collect_guide_objects(context, active_obj):
     return []
 
 
-# Custom-Property an der Kamera-Sphere: ihr Mittelpunkt in Objekt-
-# Koordinaten (= Zentrum der Ziel-Bounding-Box beim Erzeugen).
+# Custom property on the camera sphere: its center in object
+# coordinates (= center of the target bounding box at creation).
 _SPH_CENTER_PROP = "gcapture_center"
 
 
 def _gcapture_sphere_origin_to_center(obj):
-    """Legt den Ursprung einer Camera Sphere in ihre Mitte, ohne sie zu
-    verschieben (Spheres vor v95 hatten den Ursprung im Weltursprung). Nutzt
-    den gespeicherten Mittelpunkt; ohne ihn bleibt alles, wie es ist.
-    Rueckgabe: True, wenn umgestellt wurde."""
+    """Moves the origin of a Camera Sphere to its center without moving
+    it (spheres before v95 had their origin at the world origin). Uses the
+    stored center; without it, everything stays as it is.
+    Returns: True if it was changed."""
     stored = obj.get(_SPH_CENTER_PROP) if obj is not None else None
     if stored is None or len(stored) != 3 or obj.type != 'MESH':
         return False
@@ -817,20 +817,20 @@ def _gcapture_sphere_origin_to_center(obj):
 
 
 def _guide_faces_with_targets(obj):
-    """Liefert pro Face (center, normal, geo_center, origin) in Weltkoord.
-    geo_center ist der gespeicherte Sphere-Mittelpunkt, falls das Leitgitter
-    eine mit 'Camera Sphere' erzeugte Sphere ist, sonst der BBox-Mittelpunkt
-    der Face-Zentren dieses Objekts. Die BBox der Face-Zentren taugt bei der
-    oberen Halbkugel NICHT als Zielpunkt: sie liegt dort weit ueber dem
-    Modell, die Kameras zielten daran vorbei (v81-Fix)."""
+    """Returns per face (center, normal, geo_center, origin) in world coords.
+    geo_center is the stored sphere center if the guide mesh is a sphere
+    created with 'Camera Sphere', otherwise the bbox center of this object's
+    face centers. For the upper hemisphere the bbox of the face centers is
+    NOT usable as a target point: it lies far above the model there, and
+    the cameras aimed past it (v81 fix)."""
     faces = face_centers_and_normals(obj)
     if not faces:
         return []
     origin = obj.matrix_world.translation.copy()
     stored = obj.get(_SPH_CENTER_PROP)
     if stored is not None and len(stored) == 3:
-        # In Objekt-Koordinaten gespeichert -> folgt Verschieben/Skalieren
-        # der Sphere (z. B. beim Live Camera Lock).
+        # Stored in object coordinates -> follows moving/scaling
+        # of the sphere (e.g. with Live Camera Lock).
         geo_center = obj.matrix_world @ Vector(stored)
     else:
         xs = [c.x for (c, _) in faces]
@@ -839,8 +839,8 @@ def _guide_faces_with_targets(obj):
         geo_center = Vector((0.5 * (max(xs) + min(xs)),
                              0.5 * (max(ys) + min(ys)),
                              0.5 * (max(zs) + min(zs))))
-    # Fill Each View (v96): Kamera je Face um den gespeicherten Faktor zur
-    # Mitte ruecken. Folgt Verschieben/Skalieren der Sphere (Live Lock).
+    # Fill Each View (v96): move the camera per face toward the center by
+    # the stored factor. Follows moving/scaling of the sphere (Live Lock).
     fit = None
     if obj.type == 'MESH':
         a = obj.data.attributes.get(_SPH_FIT_ATTR)
@@ -852,8 +852,8 @@ def _guide_faces_with_targets(obj):
                for (c, nrm), q in zip(faces, fit)]
     else:
         out = [(c, nrm, geo_center, origin) for (c, nrm) in faces]
-    # Center in Each View (v135): Kamera und Blickziel gemeinsam seitlich
-    # versetzen -- die Blickrichtung bleibt, das Modell sitzt mittig.
+    # Center in Each View (v135): offset camera and look target sideways
+    # together -- the view direction stays, the model sits centered.
     if obj.type == 'MESH':
         sa = obj.data.attributes.get(_SPH_SHIFT_ATTR)
         if (sa is not None and sa.domain == 'FACE'
@@ -863,8 +863,8 @@ def _guide_faces_with_targets(obj):
                 sv = rot @ Vector(d.vector)
                 c, nrm, g, o = out[i]
                 out[i] = (c + sv, nrm, g + sv, o)
-    # Einzeln justierte Kameras (v123, Finish Live Adjust > Only this
-    # camera): Position und Blickziel je Face in Objektkoordinaten.
+    # Individually adjusted cameras (v123, Finish Live Adjust > Only this
+    # camera): position and look target per face in object coordinates.
     for i, pos, tgt in _sph_view_adjustments(obj, len(faces)):
         mw = obj.matrix_world
         out[i] = (mw @ pos, out[i][1], mw @ tgt, origin)
@@ -877,8 +877,8 @@ _SPH_ADJ_TGT = "gcapture_adj_tgt"
 
 
 def _sph_view_adjustments(obj, n_faces):
-    """[(Face-Index, Position, Blickziel)] der einzeln justierten Kameras,
-    beides in Objektkoordinaten (v123)."""
+    """[(face index, position, look target)] of the individually adjusted
+    cameras, both in object coordinates (v123)."""
     if obj.type != 'MESH':
         return []
     attrs = obj.data.attributes
@@ -892,7 +892,7 @@ def _sph_view_adjustments(obj, n_faces):
 
 
 def _sph_base_matrix(obj):
-    """Lage der Sphere nach Create / Update (v133)."""
+    """Placement of the sphere after Create / Update (v133)."""
     base = obj.get("gcapture_base_loc")
     if base is not None and len(base) == 3:
         return Matrix.Translation(Vector(base))
@@ -900,9 +900,9 @@ def _sph_base_matrix(obj):
 
 
 def _sph_ensure_base(obj, s):
-    """Spheres von vor v133 kennen ihre Lage nach Create / Update nicht:
-    aus den Look-Target-Collections nachtragen, wie Create / Update sie
-    berechnet (v134)."""
+    """Spheres from before v133 do not know their placement after Create /
+    Update: fill it in from the look target collections, the way Create /
+    Update computes it (v134)."""
     if obj is None or obj.get("gcapture_base_loc") is not None:
         return
     try:
@@ -914,8 +914,8 @@ def _sph_ensure_base(obj, s):
 
 
 def _sph_has_adjustments(obj):
-    """True, wenn Live Camera Adjust die Sphere veraendert oder Ansichten
-    einzeln justiert hat (v133)."""
+    """True if Live Camera Adjust changed the sphere or adjusted views
+    individually (v133)."""
     if obj is None or obj.type != 'MESH':
         return False
     flag = obj.data.attributes.get(_SPH_ADJ_FLAG)
@@ -927,8 +927,8 @@ def _sph_has_adjustments(obj):
 
 
 def _sph_reset_adjustments(obj):
-    """Sphere auf ihre Lage nach Create / Update zuruecksetzen und einzeln
-    justierte Ansichten loeschen (v133). Rueckgabe: ob sich etwas aenderte."""
+    """Reset the sphere to its placement after Create / Update and delete
+    individually adjusted views (v133). Returns: whether anything changed."""
     if not _sph_has_adjustments(obj):
         return False
     attrs = obj.data.attributes
@@ -942,7 +942,7 @@ def _sph_reset_adjustments(obj):
 
 
 def _sph_store_view_adjustment(obj, face_idx, pos_local, tgt_local):
-    """Speichert die Pose einer einzeln justierten Kamera an ihrem Face."""
+    """Stores the pose of an individually adjusted camera on its face."""
     attrs = obj.data.attributes
     n = len(obj.data.polygons)
     for name, typ in ((_SPH_ADJ_FLAG, 'BOOLEAN'), (_SPH_ADJ_POS, 'FLOAT_VECTOR'),
@@ -961,7 +961,7 @@ def _sph_store_view_adjustment(obj, face_idx, pos_local, tgt_local):
 
 
 def _gcapture_look_dir_for(s, center, normal, geo_center, origin):
-    """Blickrichtung einer Kamera am Face, konsistent mit build_animation."""
+    """View direction of a camera at the face, consistent with build_animation."""
     if s.look_mode == 'CENTER':
         look_dir = (geo_center - center)
     elif s.look_mode == 'ORIGIN':
@@ -974,10 +974,10 @@ def _gcapture_look_dir_for(s, center, normal, geo_center, origin):
 
 
 def _gcapture_all_guide_faces(context, active_obj=None, guide_objs=None):
-    """Alle Faces aller aktuellen Leitgitter als flache Liste, in genau
-    der Reihenfolge, die auch build_animation verwendet. Wenn guide_objs
-    explizit uebergeben wird (z. B. die beim Lock gemerkten Objekte), wird
-    diese Liste verwendet, statt ueber active_object zu sammeln."""
+    """All faces of all current guide meshes as a flat list, in exactly
+    the order that build_animation also uses. If guide_objs is passed
+    explicitly (e.g. the objects remembered at lock time), this list is
+    used instead of collecting via active_object."""
     if guide_objs is None:
         guide_objs = _collect_guide_objects(context, active_obj)
     faces = []
@@ -988,35 +988,35 @@ def _gcapture_all_guide_faces(context, active_obj=None, guide_objs=None):
 
 
 # ----------------------------------------------------------------------
-# Live Camera Lock: bindet EINE Kamera (aktiver Frame -> Face-Index) live
-# an das Leitgitter. Folgt Skalierung/Bewegung sofort, ohne die ganze
-# Animation zu backen. Leichtgewichtiger Handler (eine Pose statt vieler).
+# Live Camera Lock: binds ONE camera (active frame -> face index) live
+# to the guide mesh. Follows scaling/movement immediately without baking
+# the whole animation. Lightweight handler (one pose instead of many).
 # ----------------------------------------------------------------------
 import bpy.app.handlers as _gcapture_handlers
 
 _GCAPTURE_LOCK_BUSY = False
-_GCAPTURE_LOCK_START_MW = {}    # Leitgitter-Name -> matrix_world beim Einschalten (v123)
-# Beim Einschalten eingefrorener Face-Index (Variante 1). Der Handler
-# haelt die Kamera immer an diesem Index, unabhaengig vom aktuellen Frame
-# -- das umgeht das fragile Frame-Lesen im Handler-Kontext. None = nichts
-# eingefroren.
+_GCAPTURE_LOCK_START_MW = {}    # guide mesh name -> matrix_world at switch-on (v123)
+# Face index frozen at switch-on (variant 1). The handler always keeps
+# the camera at this index, regardless of the current frame -- this
+# avoids the fragile frame reading in the handler context. None = nothing
+# frozen.
 _GCAPTURE_LOCK_FROZEN_IDX = None
-# Diagnose: schreibt in die Blender-System-Konsole, was der Lock tut.
+# Diagnostics: writes to the Blender system console what the lock does.
 GCAPTURE_LOCK_DEBUG = False
-# Beim Einschalten gemerkte Leitgitter-Objekte. Der Handler darf sich
-# NICHT auf bpy.context.active_object verlassen -- das ist im Handler-
-# Kontext unzuverlaessig (das skalierte Objekt ist dort nicht zwingend
-# "aktiv"). Stattdessen merken wir die Guides beim Einschalten explizit.
+# Guide mesh objects remembered at switch-on. The handler must NOT rely
+# on bpy.context.active_object -- it is unreliable in the handler
+# context (the scaled object is not necessarily "active" there).
+# Instead we remember the guides explicitly at switch-on.
 _GCAPTURE_LOCK_GUIDES = []
 
 
 def _gcapture_redraw_view3d():
-    """Stoesst einen Redraw aller 3D-Viewports an. Nutzt tag_redraw() --
-    das zeichnet nur neu und loest KEIN Depsgraph-Update aus (anders als
-    cam.update_tag(), das im Handler eine Update-Schleife erzeugen wuerde).
-    Noetig, weil das Setzen der Kamera per Skript den Viewport im Handler-
-    Pfad sonst nicht neu zeichnet -- die Aenderung wuerde erst beim
-    naechsten UI-Ereignis sichtbar."""
+    """Triggers a redraw of all 3D viewports. Uses tag_redraw() -- this
+    only redraws and does NOT trigger a depsgraph update (unlike
+    cam.update_tag(), which would create an update loop in the handler).
+    Needed because setting the camera by script does not otherwise redraw
+    the viewport in the handler path -- the change would only become
+    visible on the next UI event."""
     wm = bpy.context.window_manager
     if not wm:
         return
@@ -1030,17 +1030,17 @@ def _gcapture_redraw_view3d():
 
 
 def _gcapture_lock_apply(context, scene=None, active_obj=None, tag_update=False):
-    """Setzt die aktive Kamera fuer den aktuellen Frame an das zum Frame
-    gehoerende Face (Frame - frame_start -> Face-Index). 'scene' wird
-    explizit uebergeben (im Handler aus dem scene-Argument), weil
-    bpy.context im Handler-Kontext veraltete Werte liefern kann -- u.a.
-    einen alten frame_current.
+    """Places the active camera for the current frame at the face belonging
+    to the frame (frame - frame_start -> face index). 'scene' is passed
+    explicitly (in the handler from the scene argument), because
+    bpy.context can return stale values in the handler context -- among
+    others an old frame_current.
 
-    tag_update: nur True aus dem Toggle-Callback (fuer den Redraw). Im
-    Handler-Pfad MUSS es False bleiben, sonst loest cam.update_tag() ein
-    neues Depsgraph-Update aus -> der Handler feuert erneut, diesmal mit
-    der Kamera (statt der Sphere) in den Updates, was zu einem Frame-/
-    Face-Versatz beim Skalieren fuehrt."""
+    tag_update: True only from the toggle callback (for the redraw). In the
+    handler path it MUST stay False, otherwise cam.update_tag() triggers a
+    new depsgraph update -> the handler fires again, this time with the
+    camera (instead of the sphere) in the updates, which leads to a frame/
+    face offset when scaling."""
     if scene is None:
         scene = context.scene
     s = scene.gcapture_settings
@@ -1051,7 +1051,7 @@ def _gcapture_lock_apply(context, scene=None, active_obj=None, tag_update=False)
                  cam.name if cam else "NOT FOUND",
                  scene.camera.name if scene.camera else "None"))
     if cam is None or cam.type != 'CAMERA':
-        # Falls keine benannte Kamera existiert, die Szenenkamera nehmen.
+        # If no named camera exists, take the scene camera.
         cam = scene.camera
         if GCAPTURE_LOCK_DEBUG:
             print("[GCAPTURE Lock] apply: falling back to scene.camera=%s"
@@ -1061,23 +1061,23 @@ def _gcapture_lock_apply(context, scene=None, active_obj=None, tag_update=False)
             print("[GCAPTURE Lock] apply: NO usable camera -> abort")
         return False
 
-    # Faces aus den beim Lock gemerkten Guides (robust gegen active_object).
+    # Faces from the guides remembered at lock (robust against active_object).
     lock_guides = [o for o in _GCAPTURE_LOCK_GUIDES if o is not None]
     faces = _gcapture_all_guide_faces(context, active_obj,
                                  guide_objs=lock_guides if lock_guides else None)
     if not faces:
         return False
 
-    # Variante 1: Wenn ein Index eingefroren ist (Lock aktiv), diesen
-    # verwenden -- NICHT den aktuellen Frame lesen. Das macht den Lock
-    # robust gegen den fragilen Frame-Kontext im Handler. Nur als Fallback
-    # (z. B. direkter Aufruf ohne Einfrieren) wird der Frame herangezogen.
+    # Variant 1: if an index is frozen (lock active), use it -- do NOT
+    # read the current frame. This makes the lock robust against the fragile
+    # frame context in the handler. Only as a fallback (e.g. a direct call
+    # without freezing) is the frame used.
     if _GCAPTURE_LOCK_FROZEN_IDX is not None:
         idx = _GCAPTURE_LOCK_FROZEN_IDX
     else:
         idx = scene.frame_current - s.frame_start
     if idx < 0 or idx >= len(faces):
-        return False  # Index ausserhalb des gueltigen Face-Bereichs
+        return False  # Index outside the valid face range
 
     center, normal, geo_center, origin = faces[idx]
     look_dir = _gcapture_look_dir_for(s, center, normal, geo_center, origin)
@@ -1087,17 +1087,17 @@ def _gcapture_lock_apply(context, scene=None, active_obj=None, tag_update=False)
     cam.location = center
     cam.rotation_quaternion = look_dir.to_track_quat('-Z', 'Y')
 
-    # Den zum Index gehoerenden Keyframe AKTUALISIEREN (keyframe_insert),
-    # statt nur direkt zu setzen. Grund: Hat die Kamera bereits Keyframes
-    # (nach einem Build), ueberschreibt die Animation jedes direkte
-    # cam.location beim naechsten Depsgraph-Eval -- die Kamera "bewegt sich
-    # nicht". keyframe_insert schreibt den Live-Wert IN die Animation, also
-    # gewinnt er. Frame = frame_start + idx (der zum Face gehoerende Frame).
+    # UPDATE the keyframe belonging to the index (keyframe_insert) instead
+    # of only setting it directly. Reason: if the camera already has keyframes
+    # (after a build), the animation overwrites any direct cam.location on
+    # the next depsgraph eval -- the camera "does not move". keyframe_insert
+    # writes the live value INTO the animation, so it wins.
+    # Frame = frame_start + idx (the frame belonging to the face).
     target_frame = s.frame_start + idx
     if cam.animation_data and cam.animation_data.action:
         cam.keyframe_insert(data_path="location", frame=target_frame)
         cam.keyframe_insert(data_path="rotation_quaternion", frame=target_frame)
-        # Konstante Interpolation beibehalten, falls so gebaut.
+        # Keep constant interpolation if built that way.
         if s.constant_interp:
             for fcurve in iter_action_fcurves(cam):
                 for kp in fcurve.keyframe_points:
@@ -1106,9 +1106,9 @@ def _gcapture_lock_apply(context, scene=None, active_obj=None, tag_update=False)
     if GCAPTURE_LOCK_DEBUG:
         print("[GCAPTURE Lock] apply: set '%s' idx %d @frame %d, loc=(%.3f,%.3f,%.3f)"
               % (cam.name, idx, target_frame, center.x, center.y, center.z))
-    # Depsgraph-Update nur taggen, wenn explizit gewuenscht (Toggle-
-    # Einschalten, fuer den Redraw). Im Handler-Pfad NICHT -- sonst
-    # Update-Schleife mit Frame-/Face-Versatz (siehe Docstring).
+    # Only tag a depsgraph update when explicitly requested (toggle
+    # switch-on, for the redraw). NOT in the handler path -- otherwise
+    # an update loop with frame/face offset (see docstring).
     if tag_update:
         cam.update_tag()
     return True
@@ -1127,13 +1127,13 @@ def _gcapture_lock_handler(scene, depsgraph):
                   "(live_lock=%s)" % (getattr(s, "live_lock", "n/a")))
         return
 
-    # Beobachtete Leitgitter: die beim Einschalten GEMERKTEN Objekte, NICHT
-    # ueber active_object (das ist im Handler unzuverlaessig -- genau das war
-    # der Bug: das skalierte Camera_Array war nicht "aktiv", also matchte es
-    # das watch-Set nicht und das Update galt als irrelevant).
+    # Watched guide meshes: the objects REMEMBERED at switch-on, NOT via
+    # active_object (that is unreliable in the handler -- exactly that was
+    # the bug: the scaled Camera_Array was not "active", so it did not
+    # match the watch set and the update was considered irrelevant).
     guide_objs = [o for o in _GCAPTURE_LOCK_GUIDES if o is not None]
     if not guide_objs:
-        # Fallback: aus den aktuellen Einstellungen sammeln.
+        # Fallback: collect from the current settings.
         guide_objs = _collect_guide_objects(bpy.context,
                                             bpy.context.active_object)
     if not guide_objs:
@@ -1148,10 +1148,10 @@ def _gcapture_lock_handler(scene, depsgraph):
         print("[GCAPTURE Lock] handler: watching %s | updates this tick: %s"
               % (names, upd_names))
 
-    # Variante 1: Der Face-Index ist eingefroren. Wir reagieren NUR auf
-    # Transform/Geometry-Aenderungen der Leitgitter (Skalieren/Bewegen) --
-    # kein Frame-Wechsel-Handling mehr noetig, da der Index fix ist. Das
-    # eliminiert die fruehere Fehlerquelle (Frame-Lesen im Handler).
+    # Variant 1: the face index is frozen. We react ONLY to
+    # transform/geometry changes of the guide meshes (scaling/moving) --
+    # frame-change handling is no longer needed since the index is fixed.
+    # This eliminates the former source of errors (frame reading in handler).
     relevant = False
     for upd in depsgraph.updates:
         orig = getattr(upd.id, "original", upd.id)
@@ -1174,8 +1174,8 @@ def _gcapture_lock_handler(scene, depsgraph):
     _GCAPTURE_LOCK_BUSY = True
     try:
         _gcapture_lock_apply(bpy.context, scene=scene)
-        # Viewport neu zeichnen, damit die Kamerabewegung sofort sichtbar
-        # ist (tag_redraw loest KEIN Depsgraph-Update aus -> keine Schleife).
+        # Redraw the viewport so that the camera movement is visible
+        # immediately (tag_redraw does NOT trigger a depsgraph update -> no loop).
         _gcapture_redraw_view3d()
     except Exception as exc:
         print("[Gaussian Render Capture] Live Camera Lock failed:", exc)
@@ -1198,22 +1198,22 @@ def _gcapture_lock_remove():
 
 
 def _gcapture_on_lock_toggle(settings, context):
-    """Schaltet den Live-Camera-Lock-Handler an/aus. Beim Einschalten wird
-    der Face-Index des AKTUELLEN Frames eingefroren (Variante 1); der Lock
-    haelt die Kamera danach an diesem Index, auch beim Skalieren/Bewegen
-    des Leitgitters. Fuer ein anderes Face: Lock aus- und wieder
-    einschalten (friert dann den neuen Frame ein)."""
+    """Switches the Live Camera Lock handler on/off. At switch-on the face
+    index of the CURRENT frame is frozen (variant 1); the lock then keeps
+    the camera at this index, even when scaling/moving the guide mesh.
+    For a different face: switch the lock off and on again (it then
+    freezes the new frame)."""
     global _GCAPTURE_LOCK_BUSY, _GCAPTURE_LOCK_FROZEN_IDX, _GCAPTURE_LOCK_GUIDES
     if settings.live_lock:
         scene = context.scene
-        # Aktuellen Frame-Index einfrieren.
+        # Freeze the current frame index.
         _GCAPTURE_LOCK_FROZEN_IDX = scene.frame_current - settings.frame_start
-        # Leitgitter JETZT merken (active_object ist hier, im Toggle-
-        # Kontext, noch zuverlaessig -- im Handler spaeter nicht mehr).
+        # Remember the guide meshes NOW (active_object is still reliable here,
+        # in the toggle context -- later in the handler it no longer is).
         _GCAPTURE_LOCK_GUIDES = _collect_guide_objects(context,
                                                   context.active_object)
-        # Lage der Leitgitter beim Einschalten (v123): "Only this camera"
-        # setzt sie beim Beenden zurueck.
+        # Placement of the guide meshes at switch-on (v123): "Only this camera"
+        # resets them on finishing.
         _GCAPTURE_LOCK_START_MW.clear()
         for g in _GCAPTURE_LOCK_GUIDES:
             if g is not None:
@@ -1234,9 +1234,9 @@ def _gcapture_on_lock_toggle(settings, context):
             print("[Gaussian Render Capture] Live Camera Lock init failed:", exc)
         finally:
             _GCAPTURE_LOCK_BUSY = False
-        # Viewport-Redraw erzwingen -- im Property-update-Kontext wird sonst
-        # nicht neu gezeichnet (Blender T74000), die Kamera saesse zwar
-        # richtig, der Viewport zeigte aber noch den alten Stand.
+        # Force a viewport redraw -- in the property update context there is
+        # otherwise no redraw (Blender T74000); the camera would be placed
+        # correctly, but the viewport would still show the old state.
         _gcapture_redraw_view3d()
     else:
         _GCAPTURE_LOCK_FROZEN_IDX = None
@@ -1245,14 +1245,14 @@ def _gcapture_on_lock_toggle(settings, context):
 
 
 # ----------------------------------------------------------------------
-# Kamera-Sphere-Generator: Helfer
+# Camera sphere generator: helpers
 # ----------------------------------------------------------------------
 def _sph_apply_render_settings(scene):
-    """Setzt einmalig die Render-Einstellungen fuer Gaussian-Splatting-
-    Captures. Jede Einstellung defensiv (try/except), damit ein in dieser
-    Blender-Version abweichender Property-Pfad nicht den ganzen Operator
-    abbricht -- die uebrigen werden trotzdem gesetzt. Gibt eine Liste der
-    nicht setzbaren Punkte zurueck (fuer einen Hinweis an den Nutzer)."""
+    """Sets the render settings for Gaussian splatting captures once.
+    Each setting defensively (try/except), so that a property path that
+    differs in this Blender version does not abort the whole operator --
+    the others are set anyway. Returns a list of the items that could not
+    be set (for a notice to the user)."""
     skipped = []
 
     def tryset(setter, label):
@@ -1261,31 +1261,31 @@ def _sph_apply_render_settings(scene):
         except Exception:
             skipped.append(label)
 
-    # Engine auf Cycles + GPU.
+    # Engine to Cycles + GPU.
     tryset(lambda: setattr(scene.render, "engine", 'CYCLES'),
            "Cycles engine")
     tryset(lambda: setattr(scene.cycles, "device", 'GPU'),
            "Cycles GPU device")
 
-    # Denoiser: Render + Viewport aktivieren.
+    # Denoiser: enable Render + Viewport.
     tryset(lambda: setattr(scene.cycles, "use_denoising", True),
            "Render denoiser")
     tryset(lambda: setattr(scene.cycles, "use_preview_denoising", True),
            "Viewport denoiser")
-    # Denoiser-TYP auf OpenImageDenoise (OIDN) -- Render + Viewport.
+    # Denoiser TYPE to OpenImageDenoise (OIDN) -- Render + Viewport.
     tryset(lambda: setattr(scene.cycles, "denoiser", 'OPENIMAGEDENOISE'),
            "Render denoiser = OpenImageDenoise")
     tryset(lambda: setattr(scene.cycles, "preview_denoiser", 'OPENIMAGEDENOISE'),
            "Viewport denoiser = OpenImageDenoise")
-    # Denoise-Geraet auf GPU (Blender 4.2+: der Denoiser kann GPU nutzen,
-    # auch wenn gerendert wird). Property-Name variiert je Version, daher
-    # mehrere Varianten defensiv versuchen.
+    # Denoising device on GPU (Blender 4.2+: the denoiser can use the GPU,
+    # even when rendering). The property name varies by version, so
+    # try several variants defensively.
     tryset(lambda: setattr(scene.cycles, "denoising_use_gpu", True),
            "Render denoiser GPU")
     tryset(lambda: setattr(scene.cycles, "preview_denoising_use_gpu", True),
            "Viewport denoiser GPU")
 
-    # Samples (Render). Viewport-Samples lassen wir unangetastet.
+    # Samples (Render). Viewport samples are left untouched.
     tryset(lambda: setattr(scene.cycles, "samples", 512),
            "Render samples 512")
 
@@ -1295,7 +1295,7 @@ def _sph_apply_render_settings(scene):
     tryset(lambda: setattr(scene.cycles, "film_transparent_glass", True),
            "Film transparent glass")
 
-    # Welt-Hintergrund: Color Value auf 1 (weiss).
+    # World background: Color Value to 1 (white).
     def set_world_bg():
         world = scene.world
         if world is None:
@@ -1318,8 +1318,8 @@ def _sph_apply_render_settings(scene):
 
 
 def _sph_apply_camera_clip(s):
-    """Setzt Clip Start/End der konfigurierten Kamera (fuer Splatting:
-    Start klein, End sehr gross)."""
+    """Sets clip start/end of the configured camera (for splatting:
+    start small, end very large)."""
     cam = bpy.data.objects.get(s.camera_name)
     if cam is None or cam.type != 'CAMERA':
         cam = bpy.context.scene.camera
@@ -1331,13 +1331,13 @@ def _sph_apply_camera_clip(s):
 
 
 def _sph_collect_objects(s, exclude=None):
-    """Alle SICHTBAREN Mesh-Objekte aus den gewaehlten Ziel-Collections
-    (rekursiv inkl. Kind-Collections). 'exclude' (Objekt) wird ausgelassen
-    -- wichtig, damit die Kamera-Sphere selbst NICHT in die Groessen-
-    berechnung eingeht. Nur sichtbare Objekte zaehlen (visible_get): so
-    blaehen ausgeblendete Hilfsobjekte (Boden-Planes, Rigs, Hilfs-Meshes)
-    die Bounding-Box nicht auf -- das war der Grund, warum die Sphere bei
-    Modellen aus vielen Teilen viel zu gross wurde."""
+    """All VISIBLE mesh objects from the selected target collections
+    (recursively incl. child collections). 'exclude' (object) is skipped
+    -- important so that the camera sphere itself does NOT enter the size
+    calculation. Only visible objects count (visible_get): this way hidden
+    helper objects (ground planes, rigs, helper meshes) do not inflate the
+    bounding box -- that was the reason why the sphere became far too
+    large for models made of many parts."""
     objs = []
     seen = set()
     excl_name = exclude.name if exclude is not None else None
@@ -1358,11 +1358,11 @@ def _sph_collect_objects(s, exclude=None):
 
 
 def _sph_world_bounds(objs):
-    """(min_vec, max_vec, center, max_dim, biggest) der Welt-Raum-Bounding-
-    Box ueber alle Objekte. max_dim ist die groesste Achsen-Ausdehnung.
-    'biggest' = (name, dim) des Objekts mit der groessten Einzel-Diagonale
-    (fuer Diagnose, welches Teil die Bounds aufblaeht). Liest die bound_box
-    aus dem EVALUIERTEN Objekt (inkl. Modifier)."""
+    """(min_vec, max_vec, center, max_dim, biggest) of the world-space bounding
+    box over all objects. max_dim is the largest axis extent.
+    'biggest' = (name, dim) of the object with the largest single diagonal
+    (for diagnosing which part inflates the bounds). Reads the bound_box
+    from the EVALUATED object (incl. modifiers)."""
     import math as _m
     depsgraph = bpy.context.evaluated_depsgraph_get()
     mn = Vector((_m.inf, _m.inf, _m.inf))
@@ -1382,7 +1382,7 @@ def _sph_world_bounds(objs):
             omn.x = min(omn.x, wc.x); omn.y = min(omn.y, wc.y); omn.z = min(omn.z, wc.z)
             omx.x = max(omx.x, wc.x); omx.y = max(omx.y, wc.y); omx.z = max(omx.z, wc.z)
             found = True
-        # Einzel-Ausdehnung dieses Objekts.
+        # Individual extent of this object.
         odim = max(omx.x - omn.x, omx.y - omn.y, omx.z - omn.z)
         if odim > biggest_dim:
             biggest_dim = odim
@@ -1391,44 +1391,44 @@ def _sph_world_bounds(objs):
         return None
     center = (mn + mx) * 0.5
     max_dim = max(mx.x - mn.x, mx.y - mn.y, mx.z - mn.z)
-    # Raumdiagonale der Gesamt-Bounding-Box: das groesste Mass, das eine
-    # Kamera aus IRGENDEINER Richtung sehen kann. Als Bezug fuer den Radius
-    # macht das Framing formunabhaengig -- kompakte (Wuerfel) und laengliche
-    # (Auto) Objekte werden mit demselben Margin gleich gut gerahmt.
+    # Space diagonal of the overall bounding box: the largest dimension a
+    # camera can see from ANY direction. As the reference for the radius it
+    # makes the framing shape-independent -- compact (cube) and elongated
+    # (car) objects are framed equally well with the same margin.
     diag = math.sqrt((mx.x - mn.x) ** 2 + (mx.y - mn.y) ** 2 +
                      (mx.z - mn.z) ** 2)
     return (mn, mx, center, max_dim, diag, (biggest_name, biggest_dim))
 
 
 def _sph_camera_min_fov(s, scene):
-    """Kleinere der beiden FOV-Achsen (horizontal/vertikal) in Radiant --
-    die einschraenkende Achse fuer 'Objekt komplett im Bild'. Basiert auf
-    der im Addon eingestellten Brennweite. Sensorbreite 36mm.
+    """Smaller of the two FOV axes (horizontal/vertical) in radians --
+    the limiting axis for 'object fully in frame'. Based on the focal
+    length set in the add-on. Sensor width 36mm.
 
-    WICHTIG: Es wird BEWUSST ein QUADRATISCHES Seitenverhaeltnis (1:1)
-    angenommen, NICHT das gerade eingestellte Render-Seitenverhaeltnis.
-    Grund: Der Build rendert fuer Splatting quadratisch (set_resolution
-    setzt res_x = res_y). Wuerde der Generator das aktuelle Seitenverhaeltnis
-    nehmen, aenderte sich der Radius, sobald der Build die Aufloesung auf
-    quadratisch umstellt -- die Sphere wuerde dann beim naechsten Erzeugen
-    einmalig schrumpfen/wachsen. Mit fixem 1:1 ist der Generator von Anfang
-    an konsistent mit dem Render-Ergebnis und bleibt stabil."""
+    IMPORTANT: a SQUARE aspect ratio (1:1) is DELIBERATELY assumed, NOT
+    the currently set render aspect ratio. Reason: the build renders
+    square for splatting (set_resolution sets res_x = res_y). If the
+    generator used the current aspect ratio, the radius would change as
+    soon as the build switches the resolution to square -- the sphere
+    would then shrink/grow once on the next creation. With a fixed 1:1
+    the generator is consistent with the render result from the start
+    and stays stable."""
     lens = max(s.focal_length, 1e-3)
     sensor_w = 36.0
-    # Quadratisch: fov_h == fov_v, also genuegt eine Achse.
+    # Square: fov_h == fov_v, so one axis is enough.
     fov = 2.0 * math.atan((sensor_w / 2.0) / lens)
     return fov
 
 
-# Mesh-Attribut der Camera Sphere (Face-Domain): Faktor, um den die
-# Kamera je Face zur Mitte rueckt (Fill Each View, v96).
+# Mesh attribute of the Camera Sphere (face domain): factor by which the
+# camera moves toward the center per face (Fill Each View, v96).
 _SPH_FIT_ATTR = "gcapture_fit"
-_SPH_FIT_MIN = 0.6   # keine Kamera naeher als 60 % des Sphere-Abstands
-_SPH_SHIFT_ATTR = "gcapture_shift"   # seitlicher Versatz je Kamera (v135)
+_SPH_FIT_MIN = 0.6   # no camera closer than 60 % of the sphere distance
+_SPH_SHIFT_ATTR = "gcapture_shift"   # lateral offset per camera (v135)
 
 
 def _sph_model_points(objs):
-    """Alle Vertices der Objekte in Weltkoordinaten als (N,3)-Array."""
+    """All vertices of the objects in world coordinates as an (N,3) array."""
     depsgraph = bpy.context.evaluated_depsgraph_get()
     chunks = []
     for o in objs:
@@ -1450,12 +1450,12 @@ def _sph_model_points(objs):
 
 
 def _sph_required_distances(points, center, dirs, fov, margin):
-    """Je Blickrichtung der Abstand zur Mitte, bei dem ALLE Punkte mit
-    Rand ins (quadratische) Bild passen. dirs: Einheitsvektoren von der
-    Mitte zur Kamera; die Kamera blickt auf die Mitte (-dir). Fuer einen
-    Punkt p mit rel = p - Mitte gilt im Kamerabild |rel.right| <= t * Tiefe
-    und |rel.up| <= t * Tiefe mit Tiefe = d - rel.u und t = tan(fov/2) /
-    margin -> d >= rel.u + max(|rel.right|, |rel.up|) / t."""
+    """Per view direction, the distance from the center at which ALL points
+    fit into the (square) image with margin. dirs: unit vectors from the
+    center to the camera; the camera looks at the center (-dir). For a
+    point p with rel = p - center, the camera image requires |rel.right| <=
+    t * depth and |rel.up| <= t * depth with depth = d - rel.u and
+    t = tan(fov/2) / margin -> d >= rel.u + max(|rel.right|, |rel.up|) / t."""
     tt = math.tan(fov / 2.0) / max(margin, 1e-6)
     points, safety = _sph_reduce_points(points)
     safety *= (1.0 + 1.0 / tt)
@@ -1466,7 +1466,7 @@ def _sph_required_distances(points, center, dirs, fov, margin):
         r = q @ Vector((1.0, 0.0, 0.0))
         up = q @ Vector((0.0, 1.0, 0.0))
         best = -np.inf
-        for k in range(0, len(rel), 500000):   # speicherschonend
+        for k in range(0, len(rel), 500000):   # memory-saving
             blk = rel[k:k + 500000]
             du = blk @ np.array(u)
             lat = np.maximum(np.abs(blk @ np.array(r)),
@@ -1477,12 +1477,12 @@ def _sph_required_distances(points, center, dirs, fov, margin):
 
 
 def _sph_framed_positions(points, center, dirs, fov, margin):
-    """Je Blickrichtung (Einheitsvektor Mitte -> Kamera) die Kameraposition,
-    bei der alle Punkte mit Rand mittig ins quadratische Bild passen, ohne
-    die Blickrichtung zu aendern (v135). Rueckgabe je Richtung
-    (Abstand entlang dir, seitlicher Versatz als Vector, relativ zur Mitte).
-    Je Bildachse: a = rel.achse, z = rel.forward, M = max(a - t z),
-    m = min(a + t z); Kamera p_a = (m + M) / 2, p_f <= (m - M) / (2 t)."""
+    """Per view direction (unit vector center -> camera) the camera position
+    at which all points fit centered into the square image with margin,
+    without changing the view direction (v135). Returns per direction
+    (distance along dir, lateral offset as Vector, relative to the center).
+    Per image axis: a = rel.axis, z = rel.forward, M = max(a - t z),
+    m = min(a + t z); camera p_a = (m + M) / 2, p_f <= (m - M) / (2 t)."""
     tt = math.tan(fov / 2.0) / max(margin, 1e-6)
     points, safety = _sph_reduce_points(points)
     safety *= (1.0 + 1.0 / tt)
@@ -1495,7 +1495,7 @@ def _sph_framed_positions(points, center, dirs, fov, margin):
         up = q @ Vector((0.0, 1.0, 0.0))
         M1 = M2 = -np.inf
         m1 = m2 = np.inf
-        for k in range(0, len(rel), 500000):   # speicherschonend
+        for k in range(0, len(rel), 500000):   # memory-saving
             blk = rel[k:k + 500000]
             z = blk @ np.array(f)
             a = blk @ np.array(r)
@@ -1511,11 +1511,11 @@ def _sph_framed_positions(points, center, dirs, fov, margin):
 
 
 def _sph_center_shifts(points, center, dirs, fov, dists, shifts, iters=8):
-    """Versatz so nachfuehren, dass das Modell bei der endgueltigen
-    Entfernung (nach der 60-%-Grenze) in beiden Bildachsen mittig sitzt
-    (v135). Die geschlossene Loesung zentriert nur die enge Achse exakt;
-    perspektivisch braucht die andere Achse eine kurze Newton-Iteration:
-    Mitte der Bildspanne -> Kamera um Mitte * t * Tiefe verschieben."""
+    """Adjust the offset so that the model sits centered in both image axes
+    at the final distance (after the 60 % limit) (v135). The closed-form
+    solution centers only the tight axis exactly; due to perspective the
+    other axis needs a short Newton iteration: center of the image span ->
+    move the camera by center * t * depth."""
     tt = math.tan(fov / 2.0)
     points, _ = _sph_reduce_points(points)
     P = np.asarray(points, dtype=np.float64)
@@ -1543,13 +1543,12 @@ def _sph_center_shifts(points, center, dirs, fov, dists, shifts, iters=8):
 
 
 def _sph_reduce_points(points, grid=384):
-    """Verkleinert grosse Punktmengen fuer die Abstandsberechnung, ohne ein
-    Ergebnis zu verfehlen: Je Rastersaeule (x/y-Zelle) zaehlen nur der
-    tiefste und der hoechste Punkt -- jeder Punkt dazwischen liegt auf ihrer
-    Verbindungsstrecke und kann fuer lineare Randbedingungen nie weiter
-    aussen liegen. x/y werden auf die Zellmitte gesetzt; der dabei maximal
-    entstehende Versatz (halbe Zelldiagonale) wird als Sicherheitsabstand
-    zurueckgegeben. Kleine Mengen bleiben unveraendert (Rueckgabe 0.0)."""
+    """Reduces large point sets for the distance calculation without missing
+    a result: per grid column (x/y cell) only the lowest and the highest
+    point count -- every point in between lies on their connecting segment
+    and can never lie further out for linear constraints. x/y are set to
+    the cell center; the maximum resulting offset (half the cell diagonal)
+    is returned as a safety margin. Small sets stay unchanged (returns 0.0)."""
     if len(points) <= 200000:
         return points, 0.0
     lo = points.min(axis=0)
@@ -1573,14 +1572,14 @@ def _sph_reduce_points(points, grid=384):
 
 
 def _sph_required_radius(max_dim, fov, margin):
-    """Sphere-Radius, bei dem ein Objekt der groessten Ausdehnung max_dim
-    (mit Margin) komplett ins Bild passt: d = (max_dim*margin/2)/tan(fov/2).
-    So ist das Objekt aus JEDER Richtung vollstaendig erfasst, weil fuer
-    die laengste Ausdehnung dimensioniert wird."""
+    """Sphere radius at which an object with the largest extent max_dim
+    (with margin) fits completely into the image: d = (max_dim*margin/2)/tan(fov/2).
+    This way the object is fully captured from EVERY direction, because
+    the sizing is based on the longest extent."""
     half = (max_dim * margin) / 2.0
     t = math.tan(fov / 2.0)
     if t < 1e-6:
-        return half  # Schutz gegen Division durch ~0
+        return half  # guard against division by ~0
     return half / t
 
 
@@ -1601,14 +1600,14 @@ class GCAPTURE_OT_guide_add(Operator):
             return {'CANCELLED'}
 
         if len(mesh_objs) == 1:
-            # Einzelnes Objekt -> Eintrag mit Objektnamen als Label.
+            # Single object -> entry with the object name as label.
             item = s.guides.add()
             item.label = mesh_objs[0].name
             ref = item.objects.add()
             ref.obj = mesh_objs[0]
             msg = "Added guide '%s'." % mesh_objs[0].name
         else:
-            # Mehrere Objekte -> ein Sammeleintrag "Guide" (durchnummeriert).
+            # Multiple objects -> one collective entry "Guide" (numbered consecutively).
             existing_labels = {it.label for it in s.guides}
             base = "Guide"
             label = base
@@ -1663,7 +1662,7 @@ class GCAPTURE_OT_coll_add(Operator):
 
     def execute(self, context):
         s = context.scene.gcapture_settings
-        # Bevorzugt die aktive Collection des View-Layers.
+        # Prefers the active collection of the view layer.
         coll = context.view_layer.active_layer_collection.collection
         if coll is None:
             self.report({'WARNING'}, "No active collection.")
@@ -1707,12 +1706,12 @@ class GCAPTURE_OT_coll_clear(Operator):
 
 
 def _ga_collect_top_parents(colls):
-    """Sammelt die obersten Parent-Objekte aus den gegebenen Collections.
-    'Oberstes' = Objekt hat keinen Parent ODER sein Parent liegt NICHT in den
-    Collections (dann ist dieses Objekt das Oberelement seiner Gruppe).
-    Bestehende Gruppen bleiben so erhalten -- ihre Kinder werden nicht
-    einzeln gesammelt, nur das Gruppen-Oberelement. Rueckgabe: Liste
-    eindeutiger Objekte."""
+    """Collects the topmost parent objects from the given collections.
+    'Topmost' = object has no parent OR its parent is NOT in the
+    collections (then this object is the top element of its group).
+    Existing groups are preserved this way -- their children are not
+    collected individually, only the group's top element. Returns: list
+    of unique objects."""
     all_objs = set()
     for coll in colls:
         if coll is None:
@@ -1723,7 +1722,7 @@ def _ga_collect_top_parents(colls):
     seen = set()
     for o in all_objs:
         p = o.parent
-        # Oberstes, wenn kein Parent oder Parent nicht in der Auswahl liegt.
+        # Topmost if there is no parent or the parent is not in the selection.
         if p is None or p not in all_objs:
             if o.name not in seen:
                 seen.add(o.name)
@@ -1732,18 +1731,18 @@ def _ga_collect_top_parents(colls):
 
 
 def _ga_world_bounds(objs, depsgraph, fast_bbox=False):
-    """Welt-Bounding-Box ueber alle objs UND ihre Nachkommen.
+    """World bounding box over all objs AND their descendants.
 
-    fast_bbox=False (Standard, praezise): numpy-vektorisiert ueber die echten
-    Mesh-Vertices -- exakt, auch bei rotierten Objekten, aber deutlich
-    schneller als eine Python-Vertex-Schleife (foreach_get + Matrixmultipl.
-    im Batch).
+    fast_bbox=False (default, precise): numpy-vectorized over the real
+    mesh vertices -- exact, even for rotated objects, but much faster
+    than a Python vertex loop (foreach_get + matrix multiplication
+    in batch).
 
-    fast_bbox=True (schnell, etwas ungenauer): nutzt nur die 8 Eckpunkte der
-    objekteigenen Bounding-Box (obj.bound_box) pro Objekt. Bei rotierten
-    Objekten wird die resultierende Welt-Box minimal zu gross.
+    fast_bbox=True (fast, slightly less accurate): uses only the 8 corners
+    of the object's own bounding box (obj.bound_box) per object. For rotated
+    objects the resulting world box is slightly too large.
 
-    Rueckgabe (min_v, max_v) als mathutils.Vector oder (None, None)."""
+    Returns (min_v, max_v) as mathutils.Vector or (None, None)."""
     import mathutils
     mn = np.array([np.inf, np.inf, np.inf], dtype=np.float64)
     mx = np.array([-np.inf, -np.inf, -np.inf], dtype=np.float64)
@@ -1762,7 +1761,7 @@ def _ga_world_bounds(objs, depsgraph, fast_bbox=False):
             mw = np.array(ob_eval.matrix_world, dtype=np.float64)  # (4,4)
 
             if fast_bbox:
-                # 8 Eckpunkte der lokalen Bounding-Box.
+                # 8 corners of the local bounding box.
                 corners = np.array([list(c) for c in ob_eval.bound_box],
                                    dtype=np.float64)  # (8,3)
                 co = corners
@@ -1778,7 +1777,7 @@ def _ga_world_bounds(objs, depsgraph, fast_bbox=False):
                 me.vertices.foreach_get("co", flat)
                 co = flat.reshape(n, 3)
 
-            # Homogen transformieren: (N,4) @ (4,4)^T -> (N,4).
+            # Homogeneous transform: (N,4) @ (4,4)^T -> (N,4).
             homog = np.column_stack([co, np.ones(len(co))])
             world = homog @ mw.T
             wxyz = world[:, :3]
@@ -1795,9 +1794,9 @@ def _ga_world_bounds(objs, depsgraph, fast_bbox=False):
 
 
 def _gcapture_frame_collections(context, colls):
-    """Rahmt die sichtbare Geometrie (Mesh) der Collections im 3D-Viewport ein
-    (View Selected), im Viewport des Knopfs, sonst im ersten der Fenster.
-    Die Auswahl wird danach wiederhergestellt (v117)."""
+    """Frames the visible geometry (mesh) of the collections in the 3D viewport
+    (View Selected), in the viewport of the button, otherwise in the first
+    of the windows. The selection is restored afterwards (v117)."""
     if bpy.app.background:
         return
     win = context.window
@@ -1874,19 +1873,19 @@ class GCAPTURE_OT_group_align(Operator):
             self.report({'ERROR'}, "No mesh geometry found for bounds.")
             return {'CANCELLED'}
 
-        # Empty-Position (Referenz): X/Y Mitte der BBox, Z am Boden (min Z).
+        # Empty position (reference): X/Y center of the bbox, Z at floor (min Z).
         cx = (mn.x + mx.x) * 0.5
         cy = (mn.y + mx.y) * 0.5
         cz = mn.z
         ref = mathutils.Vector((cx, cy, cz))
 
-        # Verschiebungsvektor, damit dieser Referenzpunkt (und damit das
-        # Empty) am Ende auf dem Weltursprung 0/0/0 liegt. ALLE Top-Objekte
-        # werden um denselben Vektor verschoben -> relative Anordnung bleibt,
-        # Auto steht mittig ueber dem Ursprung, Raeder auf Z=0.
+        # Translation vector so that this reference point (and thus the
+        # empty) ends up at the world origin 0/0/0. ALL top objects are
+        # moved by the same vector -> relative arrangement stays,
+        # car stands centered above the origin, wheels at Z=0.
         d = -ref
 
-        # Vorhandenes GCapture_Group-Empty wiederverwenden oder neu anlegen.
+        # Reuse the existing GCapture_Group empty or create a new one.
         empty = bpy.data.objects.get(self.EMPTY_NAME)
         if empty is None or empty.type != 'EMPTY':
             empty = bpy.data.objects.new(self.EMPTY_NAME, None)
@@ -1894,18 +1893,18 @@ class GCAPTURE_OT_group_align(Operator):
             empty.empty_display_size = max((mx - mn).length * 0.1, 0.1)
             colls[0].objects.link(empty)
 
-        # Zuerst alle Top-Objekte um d verschieben (Welt-Translation),
-        # solange sie noch NICHT geparentet sind.
+        # First move all top objects by d (world translation),
+        # while they are NOT yet parented.
         for o in tops:
             if o == empty:
                 continue
             o.location = o.location + d
 
-        # Empty auf den Weltursprung.
+        # Empty to the world origin.
         empty.location = mathutils.Vector((0.0, 0.0, 0.0))
         context.view_layer.update()
 
-        # Parenten mit erhaltener (jetzt schon verschobener) Welt-Transform.
+        # Parent with the (already moved) world transform preserved.
         for o in tops:
             if o == empty:
                 continue
@@ -1916,8 +1915,8 @@ class GCAPTURE_OT_group_align(Operator):
             o.matrix_parent_inverse = empty.matrix_world.inverted()
             o.matrix_world = mw
 
-        # Sphere-Zielinfo: geometrisches Zentrum (nach Verschiebung) -- die
-        # Sphere wird separat erstellt und sitzt volumenzentriert.
+        # Sphere target info: geometric center (after the move) -- the
+        # sphere is created separately and sits volume-centered.
         sph_center_z = (mn.z + mx.z) * 0.5 + d.z
         self.report(
             {'INFO'},
@@ -1947,18 +1946,18 @@ class GCAPTURE_OT_make_sphere(Operator):
         s = context.scene.gcapture_settings
         scene = context.scene
 
-        # Vorhandene Sphere ZUERST ermitteln (vor der Bounds-Berechnung),
-        # damit sie aus der Groessenberechnung ausgeschlossen werden kann.
-        # PRIMAER ueber die gespeicherte Referenz (sph_object); Name als
-        # Fallback (ein Build koennte sie umbenannt haben).
+        # Determine the existing sphere FIRST (before the bounds calculation),
+        # so that it can be excluded from the size calculation.
+        # PRIMARILY via the stored reference (sph_object); name as
+        # fallback (a build could have renamed it).
         existing = s.sph_object
         if existing is None or existing.name not in bpy.data.objects:
             existing = bpy.data.objects.get(self.SPHERE_NAME)
-        # Im Viewport geloeschte Sphere: Blender entfernt sie nur aus der
-        # Szene, die gespeicherte Referenz (sph_object) haelt das Objekt am
-        # Leben -- ohne Collection laesst es sich nicht selektieren (v94).
-        # Liegt sie in keiner Szene mehr: endgueltig entfernen und neu
-        # anlegen; liegt sie nur in einer anderen Szene: dort lassen.
+        # Sphere deleted in the viewport: Blender only removes it from the
+        # scene; the stored reference (sph_object) keeps the object alive --
+        # without a collection it cannot be selected (v94).
+        # If it is in no scene anymore: remove it for good and recreate it;
+        # if it is only in another scene: leave it there.
         if existing is not None and existing.name not in context.scene.objects:
             if not existing.users_scene:
                 if s.sph_object == existing:
@@ -1966,8 +1965,8 @@ class GCAPTURE_OT_make_sphere(Operator):
                 bpy.data.objects.remove(existing, do_unlink=True)
             existing = None
 
-        # Zielobjekte + Bounds -- die Sphere selbst ausschliessen, sonst
-        # waechst der Radius bei jedem Update (akkumulierte Skalierung).
+        # Target objects + bounds -- exclude the sphere itself, otherwise
+        # the radius grows with every update (accumulated scaling).
         objs = _sph_collect_objects(s, exclude=existing)
         if not objs:
             self.report({'ERROR'},
@@ -1983,24 +1982,24 @@ class GCAPTURE_OT_make_sphere(Operator):
             self.report({'ERROR'}, "Object bounds are degenerate (zero size).")
             return {'CANCELLED'}
 
-        # Radius aus FOV + RAUMDIAGONALE + Margin. Die Diagonale (statt der
-        # laengsten Achse) macht das Framing formunabhaengig: kompakte und
-        # laengliche Objekte werden mit demselben Margin gleich gut gerahmt.
+        # Radius from FOV + SPACE DIAGONAL + margin. The diagonal (instead of
+        # the longest axis) makes the framing shape-independent: compact and
+        # elongated objects are framed equally well with the same margin.
         fov = _sph_camera_min_fov(s, scene)
         radius = _sph_required_radius(diag, fov, s.sph_margin)
         fit_msg = ""
 
-        # Radius in die Vertices, Zentrum in die Objekt-Position (v95): der
-        # Ursprung liegt in der Sphere-Mitte, damit Skalieren mit S um die
-        # Mitte wirkt (Live Camera Lock).
+        # Radius into the vertices, center into the object position (v95): the
+        # origin lies at the sphere center so that scaling with S acts around
+        # the center (Live Camera Lock).
         mw = Matrix.Scale(radius, 4)
 
-        # Sphere-Mesh in EINEM Durchgang aufbauen: Unit-Ico-Sphere erzeugen,
-        # optional untere Haelfte entfernen, Vertices direkt mit mw in
-        # Weltkoordinaten backen -- ALLES im bmesh, BEVOR es dem Objekt
-        # zugewiesen wird. So gibt es kein Lesen-nach-Zuweisen und keine
-        # Abhaengigkeit vom Update-Timing (das war die Fehlerquelle, durch
-        # die die Sphere beim Wiederverwenden geschrumpft wirkte).
+        # Build the sphere mesh in ONE pass: create a unit ico sphere,
+        # optionally remove the lower half, bake the vertices directly with mw
+        # into world coordinates -- ALL in the bmesh, BEFORE it is assigned to
+        # the object. This way there is no read-after-assign and no dependency
+        # on update timing (that was the source of errors that made the
+        # sphere appear to shrink when reused).
         new_mesh = bpy.data.meshes.new(self.SPHERE_NAME)
         bm = _bm.new()
         _bm.ops.create_icosphere(bm, subdivisions=s.sph_subdivisions,
@@ -2011,8 +2010,8 @@ class GCAPTURE_OT_make_sphere(Operator):
             if to_del:
                 _bm.ops.delete(bm, geom=to_del, context='VERTS')
 
-        # Framing auf die Sequenz eichen (v96): je Face (= Kamera) den
-        # noetigen Abstand aus den echten Modellpunkten berechnen.
+        # Calibrate the framing to the sequence (v96): per face (= camera)
+        # compute the required distance from the real model points.
         fit_q = None
         shifts = None
         if s.sph_fit_each:
@@ -2021,12 +2020,12 @@ class GCAPTURE_OT_make_sphere(Operator):
                 bm.faces.ensure_lookup_table()
                 unit_c = [f.calc_center_median() for f in bm.faces]
                 dirs = [c.normalized() for c in unit_c]
-                # Mindestens ~1 Pixel Luft zum Bildrand (bei Margin 1.0
-                # beruehrt das Modell den Rand sonst exakt -> Rundung).
+                # At least ~1 pixel of clearance to the image border (at margin 1.0
+                # the model otherwise touches the border exactly -> rounding).
                 px_guard = 1.0 + 2.0 / max(s.resolution, 16)
                 shifts = None
-                # Mit Look Target "Origin" zielte die Kamera nach dem Versatz
-                # nicht mehr parallel -> dort kein Versatz.
+                # With Look Target "Origin" the camera no longer aimed parallel
+                # after the offset -> no offset there.
                 if s.sph_center_view and s.look_mode != 'ORIGIN':
                     framed = _sph_framed_positions(pts, center, dirs, fov,
                                                    s.sph_margin * px_guard)
@@ -2035,7 +2034,7 @@ class GCAPTURE_OT_make_sphere(Operator):
                 else:
                     need = _sph_required_distances(pts, center, dirs, fov,
                                                    s.sph_margin * px_guard)
-                # Kamera sitzt im Face-Zentrum: Abstand = radius * |c_unit|.
+                # Camera sits at the face center: distance = radius * |c_unit|.
                 ratios = [d / max(c.length, 1e-9)
                           for d, c in zip(need, unit_c)]
                 limit = max(range(len(ratios)), key=ratios.__getitem__)
@@ -2043,16 +2042,16 @@ class GCAPTURE_OT_make_sphere(Operator):
                 fit_q = [max(_SPH_FIT_MIN, min(1.0, rr / radius))
                          for rr in ratios]
                 if shifts is not None:
-                    # Endgueltige Entfernung je Kamera (nach der Grenze)
-                    # und darauf zentrieren (v135).
+                    # Final distance per camera (after the limit)
+                    # and center on it (v135).
                     finals = [q * radius * c.length
                               for q, c in zip(fit_q, unit_c)]
                     shifts = _sph_center_shifts(pts, center, dirs, fov,
                                                 finals, shifts)
                 fit_msg = " Each view filled%s; widest view: camera %d." % (
                     " and centred" if shifts is not None else "", limit + 1)
-        # Vertices in Objekt-Koordinaten backen (Unit -> radius*v). Matrix
-        # erst hier bilden: Fill Each View kann den Radius oben aendern.
+        # Bake vertices into object coordinates (unit -> radius*v). Build the
+        # matrix only here: Fill Each View can change the radius above.
         mw = Matrix.Scale(radius, 4)
         for v in bm.verts:
             v.co = mw @ v.co
@@ -2061,8 +2060,8 @@ class GCAPTURE_OT_make_sphere(Operator):
         if fit_q is not None and len(fit_q) == len(new_mesh.polygons):
             attr = new_mesh.attributes.new(_SPH_FIT_ATTR, 'FLOAT', 'FACE')
             attr.data.foreach_set("value", fit_q)
-            # Seitlicher Versatz je Kamera (v135). Die Sphere hat keine
-            # Drehung/Skalierung -> Welt-Versatz = Objekt-Versatz.
+            # Lateral offset per camera (v135). The sphere has no
+            # rotation/scale -> world offset = object offset.
             if (s.sph_fit_each and s.sph_center_view and shifts is not None
                     and len(shifts) == len(new_mesh.polygons)):
                 sattr = new_mesh.attributes.new(_SPH_SHIFT_ATTR,
@@ -2070,7 +2069,7 @@ class GCAPTURE_OT_make_sphere(Operator):
                 sattr.data.foreach_set(
                     "vector", [c for v in shifts for c in (v.x, v.y, v.z)])
 
-        # Vorhandene Sphere wiederverwenden (Mesh ersetzen) oder neu anlegen.
+        # Reuse the existing sphere (replace the mesh) or create a new one.
         if existing is not None and existing.type == 'MESH':
             sphere_obj = existing
             if sphere_obj.name != self.SPHERE_NAME:
@@ -2083,33 +2082,33 @@ class GCAPTURE_OT_make_sphere(Operator):
             sphere_obj = bpy.data.objects.new(self.SPHERE_NAME, new_mesh)
             _gcapture_rig_collection(context.scene).objects.link(sphere_obj)
 
-        _gcapture_move_to_rig(context.scene, sphere_obj)   # eigene Collection (v136)
-        # Objekt-Transform: nur die Position (Zentrum); die Skalierung
-        # steckt in den Vertices.
+        _gcapture_move_to_rig(context.scene, sphere_obj)   # dedicated collection (v136)
+        # Object transform: only the location (center); the scale
+        # is baked into the vertices.
         sphere_obj.matrix_world = Matrix.Translation(center)
-        # Lage nach Create / Update (v133): Build setzt die Sphere hierher
-        # zurueck und verwirft damit Live-Camera-Adjust-Aenderungen.
+        # Placement after Create / Update (v133): Build resets the sphere to
+        # this and thereby discards Live Camera Adjust changes.
         sphere_obj["gcapture_base_loc"] = tuple(center)
-        # Mittelpunkt merken (Objekt-Koordinaten, also der Ursprung):
-        # Zielpunkt der Kameras im CENTER-Modus, auch bei der Halbkugel.
+        # Remember the center (object coordinates, i.e. the origin):
+        # target point of the cameras in CENTER mode, also for the hemisphere.
         sphere_obj[_SPH_CENTER_PROP] = (0.0, 0.0, 0.0)
 
-        # Anzeige als Wireframe, nicht rendern.
+        # Display as wireframe, do not render.
         sphere_obj.display_type = 'WIRE'
         sphere_obj.hide_render = True
 
         n_faces = len(sphere_obj.data.polygons)
 
-        # Referenz auf die erzeugte Sphere speichern, damit ein spaeteres
-        # Update sie auch nach einer Umbenennung (durch Build) wiederfindet.
+        # Store a reference to the created sphere so that a later
+        # Update finds it again even after a rename (by Build).
         s.sph_object = sphere_obj
 
-        # Als Leitgitter setzen -- FEST in die Guide-Liste, nicht ueber das
-        # aktive Objekt. Sonst nimmt der Build das gerade aktive Objekt (z. B.
-        # den Wuerfel), baut die Kameras auf DESSEN Faces und die Kamera klebt
-        # an der Objektoberflaeche statt auf der Sphere zu sitzen.
+        # Set as guide mesh -- FIXED in the guide list, not via the
+        # active object. Otherwise Build takes the currently active object (e.g.
+        # the cube), builds the cameras on ITS faces and the camera sticks
+        # to the object surface instead of sitting on the sphere.
         if s.sph_set_as_guide:
-            # Guide-Liste leeren und nur die Sphere eintragen.
+            # Clear the guide list and add only the sphere.
             s.guides.clear()
             item = s.guides.add()
             item.label = sphere_obj.name
@@ -2117,20 +2116,20 @@ class GCAPTURE_OT_make_sphere(Operator):
             ref.obj = sphere_obj
             s.guide_index = 0
             s.use_guide_list = True
-            # Auswahl/aktiv auf die Sphere (kosmetisch).
+            # Select/activate the sphere (cosmetic).
             for o in context.selected_objects:
                 o.select_set(False)
             sphere_obj.select_set(True)
             context.view_layer.objects.active = sphere_obj
-            # Look-Modus auf Zentrum (Sphere blickt nach innen).
+            # Look mode to center (the sphere looks inward).
             s.look_mode = 'CENTER'
-            # Umbenennung beim Build verhindern: Die Sphere soll durchgehend
-            # "Camera_Sphere" heissen, damit Update sie immer wiederfindet.
+            # Prevent renaming during Build: the sphere should always be named
+            # "Camera_Sphere" so that Update always finds it again.
             s.rename_guide = False
 
-        # Render-Einstellungen fuer Splatting: NUR EINMAL pro Datei setzen.
-        # Bei spaeteren Updates bleiben die (evtl. vom Nutzer angepassten)
-        # Einstellungen unangetastet.
+        # Render settings for splatting: set ONLY ONCE per file.
+        # Later updates leave the settings (possibly adjusted by the user)
+        # untouched.
         render_msg = ""
         if not s.sph_render_setup_done:
             skipped = _sph_apply_render_settings(scene)
@@ -2178,20 +2177,20 @@ class GCAPTURE_OT_lock_start(Operator):
         if sph is None:
             self.report({'ERROR'}, "No camera sphere in the scene.")
             return {'CANCELLED'}
-        # Aeltere Sphere: Ursprung in die Mitte, damit S um die Mitte skaliert.
+        # Older sphere: origin to the center so that S scales around the center.
         _gcapture_sphere_origin_to_center(sph)
-        # Lage nach Create / Update nachtragen, damit Build G/S zuruecksetzt.
+        # Add the placement after Create / Update so that Build resets G/S.
         _sph_ensure_base(sph, s)
-        # Sphere als einziges Objekt auswaehlen und aktiv setzen.
+        # Select the sphere as the only object and make it active.
         for o in context.selected_objects:
             o.select_set(False)
         sph.select_set(True)
         context.view_layer.objects.active = sph
-        # Lock einschalten (friert das Face des aktuellen Frames ein).
+        # Enable Lock (freezes the face of the current frame).
         s.live_lock = True
 
-        # Kein automatisches Skalieren (v97): fuer Einsteiger verwirrend.
-        # Die Sphere ist ausgewaehlt, der Nutzer drueckt selbst S.
+        # No automatic scaling (v97): confusing for beginners.
+        # The sphere is selected; the user presses S themselves.
         self.report({'INFO'}, "Live Camera Adjust on - press S in the viewport "
                     "to scale the sphere, G to move it. The camera follows.")
         return {'FINISHED'}
@@ -2226,8 +2225,8 @@ class GCAPTURE_OT_lock_finish(Operator):
         global _GCAPTURE_LOCK_BUSY
         s = context.scene.gcapture_settings
         if self.apply_to == 'CANCEL':
-            # Sphere zuruecksetzen und die Kamera des eingefrorenen Frames
-            # noch mit aktivem Lock neu setzen (Keyframe), dann Lock aus (v132).
+            # Reset the sphere and re-place the camera of the frozen frame
+            # while Lock is still active (keyframe), then Lock off (v132).
             for g in _GCAPTURE_LOCK_GUIDES:
                 if g is not None and g.name in _GCAPTURE_LOCK_START_MW:
                     g.matrix_world = _GCAPTURE_LOCK_START_MW[g.name]
@@ -2242,14 +2241,14 @@ class GCAPTURE_OT_lock_finish(Operator):
                         "camera are back.")
             return {'FINISHED'}
         if self.apply_to == 'THIS':
-            # Erst den Lock aus (Handler weg), dann Pose speichern und die
-            # Sphere zuruecksetzen -- sonst zoege der Handler die Kamera mit.
+            # First turn Lock off (handler gone), then save the pose and reset
+            # the sphere -- otherwise the handler would drag the camera along.
             idx = _GCAPTURE_LOCK_FROZEN_IDX
             guides = [g for g in _GCAPTURE_LOCK_GUIDES if g is not None]
             s.live_lock = False
             msg = self._keep_this_view(idx, guides)
             self.report({'INFO'}, msg)
-            # Wie nach einem Build: Version speichern (v128).
+            # As after a Build: save a version (v128).
             if (s.save_after_build and not bpy.app.background
                     and getattr(context, "window", None)):
                 try:
@@ -2257,18 +2256,18 @@ class GCAPTURE_OT_lock_finish(Operator):
                 except Exception as exc:
                     print("[Gaussian Render Capture] Save prompt failed:", exc)
             return {'FINISHED'}
-        # Lock ausschalten (loest _gcapture_on_lock_toggle aus -> Handler weg,
-        # Frozen-Index zurueck).
+        # Turn Lock off (triggers _gcapture_on_lock_toggle -> handler gone,
+        # frozen index reset).
         s.live_lock = False
-        # Vollstaendige Neuberechnung ueber den modalen Build-Operator.
+        # Full recalculation via the modal Build operator.
         bpy.ops.gcapture.build_animation('INVOKE_DEFAULT', keep_adjustments=True)
         self.report({'INFO'}, "Live adjust finished -> rebuilding all poses.")
         return {'FINISHED'}
 
     @staticmethod
     def _keep_this_view(idx, guides):
-        """Pose der eingefrorenen Kamera am Face speichern und die Leitgitter
-        auf ihre Lage beim Einschalten zuruecksetzen (v123)."""
+        """Save the pose of the frozen camera at the face and reset the guide
+        meshes to their placement at the time Lock was enabled (v123)."""
         if idx is None or not guides:
             return "Live adjust finished."
         base = 0
@@ -2298,8 +2297,8 @@ class GCAPTURE_OT_build(Operator):
                       "Runs modally with a progress display (ESC to cancel)")
     bl_options = {'REGISTER', 'UNDO'}
 
-    # Nur "All Cameras" (Live Camera Adjust) baut mit der veraenderten
-    # Sphere neu; sonst frisch aus Schritt 3 (v133).
+    # Only "All Cameras" (Live Camera Adjust) rebuilds with the modified
+    # sphere; otherwise fresh from step 3 (v133).
     keep_adjustments: BoolProperty(default=False, options={'SKIP_SAVE', 'HIDDEN'})
 
     _is_running = False
@@ -2309,9 +2308,9 @@ class GCAPTURE_OT_build(Operator):
         if cls._is_running:
             return False
         s = context.scene.gcapture_settings
-        # Waehrend Live Camera Lock aktiv ist gesperrt -- erst Finish Live
-        # Adjust ausfuehren, sonst wuerden die live angepassten Keyframes
-        # ueberschrieben.
+        # Blocked while Live Camera Lock is active -- run Finish Live
+        # Adjust first, otherwise the live-adjusted keyframes would be
+        # overwritten.
         if s.live_lock:
             return False
         if s.use_guide_list and len(s.guides) > 0:
@@ -2338,7 +2337,7 @@ class GCAPTURE_OT_build(Operator):
                 if self._reset:
                     context.view_layer.update()
 
-        # Leitgitter als Drahtgitter anzeigen, aus dem Render nehmen.
+        # Display guide meshes as wireframe, exclude them from the render.
         for gobj in self._guide_objs:
             setup_guide_object(gobj, s)
 
@@ -2349,7 +2348,7 @@ class GCAPTURE_OT_build(Operator):
             self._cam.animation_data_clear()
         self._cam.rotation_mode = 'QUATERNION'
 
-        # Alle Faces aller Leitgitter als flache Arbeitsliste sammeln.
+        # Collect all faces of all guide meshes as a flat work list.
         self._faces = []
         for gobj in self._guide_objs:
             self._faces.extend(_guide_faces_with_targets(gobj))
@@ -2357,9 +2356,9 @@ class GCAPTURE_OT_build(Operator):
         if self._total == 0:
             raise RuntimeError("Guides have no faces.")
 
-        # Anzeigegroesse der Kamera im Viewport passend zur Sphere (v1.1.5):
-        # Blenders 1 m verdeckt kleine Modelle. Nur solange der Nutzer sie
-        # nicht selbst gesetzt hat (Blender-Standard oder von uns gesetzt).
+        # Viewport display size of the camera to match the sphere (v1.1.5):
+        # Blender's 1 m hides small models. Only as long as the user has not
+        # set it themselves (Blender default or set by us).
         cam_data = self._cam.data
         if (abs(cam_data.display_size - 1.0) < 1e-6
                 or cam_data.get("gcapture_display_auto")):
@@ -2369,9 +2368,9 @@ class GCAPTURE_OT_build(Operator):
                 cam_data.display_size = max(radius * 0.1, 0.001)
                 cam_data["gcapture_display_auto"] = True
 
-        # Interior-Erkennung vorbereiten (einmalig). Nur mit eigenen
-        # Leitgittern wirksam: die Kamera-Sphere liegt immer ausserhalb des
-        # Modells, dort wuerde der Test nur bremsen (v93).
+        # Prepare interior detection (once). Only effective with custom
+        # guide meshes: the camera sphere always lies outside the
+        # model, where the test would only slow things down (v93).
         self._skip_interior = s.skip_interior and _gcapture_has_custom_guides(s)
         self._s = s
         self._guide_set = set(self._guide_objs)
@@ -2424,10 +2423,10 @@ class GCAPTURE_OT_build(Operator):
         self._n += 1
 
     def invoke(self, context, event):
-        # Warnung, wenn Live-Camera-Adjust-Aenderungen verloren gingen (v133).
+        # Warning when Live Camera Adjust changes were lost (v133).
         s = context.scene.gcapture_settings
         if s.sph_object is not None:
-            _sph_ensure_base(s.sph_object, s)     # aeltere Spheres (v134)
+            _sph_ensure_base(s.sph_object, s)     # older spheres (v134)
         if (not self.keep_adjustments
                 and _sph_has_adjustments(s.sph_object)):
             return context.window_manager.invoke_props_dialog(self, width=360)
@@ -2476,8 +2475,8 @@ class GCAPTURE_OT_build(Operator):
                 "gcapture.build_animation", self._done / self._total,
                 "Building cameras %d/%d%s" % (self._done, self._total, time_info))
 
-            # Batchgroesse: ohne Interior-Check sind Posen sehr schnell ->
-            # grosse Batches; mit Interior-Check (Ray-Cast) kleinere.
+            # Batch size: without interior check poses are very fast ->
+            # large batches; with interior check (ray cast) smaller ones.
             batch = 5 if self._skip_interior else 100
             try:
                 for _ in range(batch):
@@ -2507,9 +2506,9 @@ class GCAPTURE_OT_build(Operator):
                     kp.interpolation = 'CONSTANT'
         if s.set_active_camera:
             context.scene.camera = self._cam
-            # In die Kameraansicht wechseln (entspricht Numpad 0) -- in allen
-            # 3D-Viewports. region_3d.view_perspective ist der zuverlaessige
-            # API-Weg dafuer.
+            # Switch to camera view (equivalent to Numpad 0) -- in all
+            # 3D viewports. region_3d.view_perspective is the reliable
+            # API way to do this.
             for area in context.screen.areas:
                 if area.type == 'VIEW_3D':
                     for space in area.spaces:
@@ -2541,8 +2540,8 @@ class GCAPTURE_OT_build(Operator):
         if rejected:
             msg += " Rejected %d interior cameras." % rejected
         self.report({'INFO'}, msg)
-        # Aufforderung, die Szene als Version zu speichern (v90). Nur mit
-        # Fenster (nicht im Headless-Test).
+        # Prompt to save the scene as a version (v90). Only with a
+        # window (not in the headless test).
         if (s.save_after_build and not bpy.app.background
                 and getattr(context, "window", None)):
             try:
@@ -2561,14 +2560,14 @@ class GCAPTURE_OT_build(Operator):
 
 
 # ----------------------------------------------------------------------
-# UIList fuer die Guide-Eintraege (editierbares Label + Objektanzahl)
+# UIList for the guide entries (editable label + object count)
 # ----------------------------------------------------------------------
 class GCAPTURE_UL_guides(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon,
                   active_data, active_propname, index):
         n = len(item.objects)
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            # Editierbares Label (Doppelklick zum Umbenennen).
+            # Editable label (double-click to rename).
             layout.prop(item, "label", text="", emboss=False,
                         icon='MESH_ICOSPHERE')
             sub = layout.row()
@@ -2596,25 +2595,25 @@ class GCAPTURE_UL_colls(bpy.types.UIList):
 # N-Panel
 # ----------------------------------------------------------------------
 # ----------------------------------------------------------------------
-# Eigene Icons: farbige Nummern-Plaketten fuer die Schritte (v87)
+# Custom icons: colored number badges for the steps (v87)
 # ----------------------------------------------------------------------
-# Das Addon bleibt eine einzelne Datei: die Plaketten werden beim
-# Registrieren mit numpy gezeichnet, als PNG in einen Cache-Ordner
-# geschrieben und ueber bpy.utils.previews geladen. Kein bpy.data-Zugriff
-# (beim Start eingeschraenkt), PNG-Kodierung per zlib.
+# The addon stays a single file: the badges are drawn with numpy on
+# registration, written as PNG to a cache folder and loaded via
+# bpy.utils.previews. No bpy.data access (restricted at startup),
+# PNG encoding via zlib.
 import struct as _gcapture_struct
 import tempfile as _gcapture_tempfile
 import zlib as _gcapture_zlib
 
-# Phasenfarben wie in der Workflow-Grafik: orange -> gelb -> gruen -> blau (sRGB 0..1).
+# Phase colors as in the workflow graphic: orange -> yellow -> green -> blue (sRGB 0..1).
 _GCAPTURE_BADGE_RGB = {
-    'PREP': (0.93, 0.50, 0.13),      # orange: Vorbereiten
-    'CAMERAS': (0.95, 0.80, 0.16),   # gelb:   Kameras
-    'OUTPUT': (0.33, 0.70, 0.28),    # gruen:  Rendern
-    'COLMAP': (0.23, 0.65, 0.79),    # blau:   COLMAP-Export (v146)
-    'NEUTRAL': (0.92, 0.92, 0.92),   # weiss:  keine Phase (Camera Settings)
+    'PREP': (0.93, 0.50, 0.13),      # orange: Prepare
+    'CAMERAS': (0.95, 0.80, 0.16),   # yellow: Cameras
+    'OUTPUT': (0.33, 0.70, 0.28),    # green:  Render
+    'COLMAP': (0.23, 0.65, 0.79),    # blue:   COLMAP export (v146)
+    'NEUTRAL': (0.92, 0.92, 0.92),   # white:  no phase (Camera Settings)
 }
-# Ziffern als Strichzuege in einem Einheitsquadrat (x rechts, y oben).
+# Digits as stroke paths in a unit square (x right, y up).
 _GCAPTURE_DIGIT_STROKES = {
     "1": [[(0.30, 0.78), (0.56, 0.96), (0.56, 0.04)]],
     "2": [[(0.18, 0.74), (0.28, 0.90), (0.50, 0.97), (0.72, 0.90),
@@ -2632,9 +2631,9 @@ _GCAPTURE_DIGIT_STROKES = {
            (0.82, 0.30), (0.76, 0.50), (0.52, 0.58), (0.30, 0.52),
            (0.19, 0.36)]],
 }
-# Plaketten: Name -> (Phase, Ziffer; None = Punkt ohne Nummer, "" = leer).
+# Badges: name -> (phase, digit; None = dot without number, "" = empty).
 _GCAPTURE_BADGES = {
-    'gcapture_cam': ('PREP', "1"),        # Einstieg = Schritt 1 (v147)
+    'gcapture_cam': ('PREP', "1"),        # Start = step 1 (v147)
     'gcapture_1': ('PREP', "2"),
     'gcapture_2': ('PREP', "3"),
     'gcapture_3': ('CAMERAS', "4"),
@@ -2642,14 +2641,14 @@ _GCAPTURE_BADGES = {
     'gcapture_5': ('OUTPUT', "6"),
     'gcapture_6': ('COLMAP', "7"),
 }
-_GCAPTURE_ICON_VERSION = 6   # bei Aenderung am Aussehen erhoehen (Cache-Ordner)
+_GCAPTURE_ICON_VERSION = 6   # increase when the appearance changes (cache folder)
 _gcapture_previews = None
 
 
 def _gcapture_badge_rgba(rgb, digit, size=64):
-    """RGBA-Array (size, size, 4) uint8: gefuellter Kreis in Phasenfarbe,
-    darauf die Ziffer fett in Dunkelgrau (oder ein kleiner Punkt).
-    Kantenglaettung analytisch ueber den Abstand."""
+    """RGBA array (size, size, 4) uint8: filled circle in the phase color,
+    with the digit on top in bold dark gray (or a small dot).
+    Analytic anti-aliasing via the distance."""
     yy, xx = np.mgrid[0:size, 0:size].astype(np.float64) + 0.5
     x = xx / size
     y = 1.0 - yy / size
@@ -2658,9 +2657,9 @@ def _gcapture_badge_rgba(rgb, digit, size=64):
     a_disc = np.clip(0.5 - d_disc / px, 0.0, 1.0)
 
     if digit:
-        # Ziffernbox: Hoehe 0.56, Breite 0.40, zentriert.
+        # Digit box: height 0.56, width 0.40, centered.
         bx0, by0, bw, bh = 0.30, 0.22, 0.40, 0.56
-        half_w = 0.052   # halbe Strichstaerke -> fett
+        half_w = 0.052   # half stroke width -> bold
         dmin = np.full_like(x, 1e9)
         for stroke in _GCAPTURE_DIGIT_STROKES[digit]:
             pts = [(bx0 + u * bw, by0 + v * bh) for (u, v) in stroke]
@@ -2675,7 +2674,7 @@ def _gcapture_badge_rgba(rgb, digit, size=64):
         d_dot = np.hypot(x - 0.5, y - 0.5) - 0.13
         ink = np.clip(0.5 - d_dot / px, 0.0, 1.0)
     else:
-        ink = np.zeros_like(x)   # leere Plakette
+        ink = np.zeros_like(x)   # empty badge
 
     ink_rgb = np.array((0.12, 0.12, 0.12))
     base = np.array(rgb)
@@ -2686,7 +2685,7 @@ def _gcapture_badge_rgba(rgb, digit, size=64):
 
 
 def _gcapture_write_png(path, rgba):
-    """Minimaler PNG-Schreiber (RGBA, 8 Bit) ohne Zusatzbibliothek."""
+    """Minimal PNG writer (RGBA, 8 bit) without an extra library."""
     h, w = rgba.shape[:2]
     raw = b"".join(b"\x00" + rgba[row].tobytes() for row in range(h))
 
@@ -2703,9 +2702,9 @@ def _gcapture_write_png(path, rgba):
 
 
 def _gcapture_icons_load():
-    """Plaketten erzeugen (einmal pro Icon-Version) und laden. Scheitert
-    etwas, bleibt _gcapture_previews None -> Panels fallen auf Blender-Icons
-    zurueck."""
+    """Create the badges (once per icon version) and load them. If something
+    fails, _gcapture_previews stays None -> panels fall back to Blender
+    icons."""
     global _gcapture_previews
     try:
         import bpy.utils.previews
@@ -2737,21 +2736,21 @@ def _gcapture_icons_unload():
     _gcapture_previews = None
 
 
-# Farben der Arbeitsphasen (Icons der Collection-Color-Tags). Blender
-# erlaubt Addons keine eingefaerbten Boxen -- farbig sind nur Icons. Rot
-# (COLLECTION_COLOR_01) bleibt fuer Warnungen (alert) reserviert.
-# Reihenfolge wie eine Ampel: orange -> gelb -> gruen (v86).
-_GCAPTURE_COLOR_PREP = 'COLLECTION_COLOR_02'     # orange: Vorbereiten
-_GCAPTURE_COLOR_CAMERAS = 'COLLECTION_COLOR_03'  # gelb:   Kameras
-_GCAPTURE_COLOR_OUTPUT = 'COLLECTION_COLOR_04'   # gruen:  Rendern
-_GCAPTURE_COLOR_COLMAP = 'COLLECTION_COLOR_05'   # blau:   COLMAP-Export (v146)
+# Colors of the work phases (icons of the collection color tags). Blender
+# does not allow add-ons colored boxes -- only icons are colored. Red
+# (COLLECTION_COLOR_01) stays reserved for warnings (alert).
+# Order like a traffic light: orange -> yellow -> green (v86).
+_GCAPTURE_COLOR_PREP = 'COLLECTION_COLOR_02'     # orange: Prepare
+_GCAPTURE_COLOR_CAMERAS = 'COLLECTION_COLOR_03'  # yellow: Cameras
+_GCAPTURE_COLOR_OUTPUT = 'COLLECTION_COLOR_04'   # green:  Render
+_GCAPTURE_COLOR_COLMAP = 'COLLECTION_COLOR_05'   # blue:   COLMAP export (v146)
 
 
 # ----------------------------------------------------------------------
-# Einsteigerhilfen (v90): Auswahl in eine Collection, Szenenversionen
+# Beginner aids (v90): selection into a collection, scene versions
 # ----------------------------------------------------------------------
 def _gcapture_version_files(folder, name):
-    """Vorhandene Versionsnummern von <name>_vNNN*.blend im Ordner."""
+    """Existing version numbers of <name>_vNNN*.blend in the folder."""
     found = []
     if not folder or not os.path.isdir(folder):
         return found
@@ -2764,14 +2763,14 @@ def _gcapture_version_files(folder, name):
 
 
 def _gcapture_next_version_path(folder, name, width=3):
-    """Pfad der naechsten freien Version <name>_vNNN.blend im Ordner."""
+    """Path of the next free version <name>_vNNN.blend in the folder."""
     nums = _gcapture_version_files(folder, name)
     nxt = (max(nums) + 1) if nums else 1
     return os.path.join(folder, "%s_v%0*d.blend" % (name, width, nxt))
 
 
 def _gcapture_clean_name(raw):
-    """Szenenname ohne Endung, Versions-Token und unzulaessige Zeichen."""
+    """Scene name without extension, version token and invalid characters."""
     stem = os.path.splitext(os.path.basename(raw or ""))[0]
     name, _ = _exp_split_name_version(stem)
     name = re.sub(r'[\\/:*?"<>|\s]+', "_", name).strip("_.- ")
@@ -2779,7 +2778,7 @@ def _gcapture_clean_name(raw):
 
 
 def _gcapture_managed_render_path(name, vtag):
-    """Relativer Renderpfad direkt in den Datensatz:
+    """Relative render path directly into the dataset:
     //<Name>_COLMAP/<vNNN>/images/<Name>_<vNNN>_"""
     return "//%s_COLMAP/%s/images/%s_%s_" % (name, vtag, name, vtag)
 
@@ -2791,8 +2790,8 @@ _GCAPTURE_MANAGED_RX = re.compile(
 
 
 def _gcapture_sync_render_version(filepath):
-    """Setzt einen vom Addon verwalteten Renderpfad auf Name und Version der
-    Datei (v119). Rueckgabe: Anzahl geaenderter Szenen."""
+    """Sets a render path managed by the addon to the file's name and
+    version (v119). Returns: number of changed scenes."""
     stem = os.path.splitext(os.path.basename(filepath or ""))[0]
     name, vtag = _exp_split_name_version(stem)
     if not vtag:
@@ -2815,15 +2814,15 @@ _GCAPTURE_OUT_RX = re.compile(r"^//[^/]+_COLMAP/[vV]\d+/?$")
 
 
 def _gcapture_render_path_is_default_or_managed(scene):
-    """True, wenn der Renderpfad Blenders Standard ist oder vom Addon
-    verwaltet wird -- dann darf Save Scene Version ihn setzen (v129)."""
+    """True if the render path is Blender's default or is managed by the
+    addon -- then Save Scene Version may set it (v129)."""
     rp = (scene.render.filepath or "").replace("\\", "/").strip()
     return (rp in ("", "/tmp", "/tmp/", "//")
             or bool(_GCAPTURE_MANAGED_RX.match(rp)))
 
 
 def _gcapture_auto_output_dir(filepath):
-    """//<Name>_COLMAP/<vNNN>/ fuer die Datei (wie _exp_resolve_output_dir)."""
+    """//<Name>_COLMAP/<vNNN>/ for the file (like _exp_resolve_output_dir)."""
     if not filepath:
         return ""
     stem = os.path.splitext(os.path.basename(filepath))[0]
@@ -2832,8 +2831,8 @@ def _gcapture_auto_output_dir(filepath):
 
 
 def _gcapture_auto_image_dir(scene):
-    """Ordner des Renderpfads, wie er in der Szene steht (relativ bleibt
-    relativ)."""
+    """Folder of the render path as it is set in the scene (relative stays
+    relative)."""
     rp = (scene.render.filepath or "").replace("\\", "/")
     if not rp.strip():
         return ""
@@ -2841,9 +2840,9 @@ def _gcapture_auto_image_dir(scene):
 
 
 def _gcapture_sync_path_fields(scene, filepath):
-    """Output Folder und Image Folder zeigen die tatsaechlichen Pfade und
-    folgen Version und Renderpfad, solange sie den vom Addon eingetragenen
-    Wert haben (v129). Ungespeicherte Szenen bleiben leer (= automatisch)."""
+    """Output Folder and Image Folder show the actual paths and
+    follow version and render path as long as they hold the value entered
+    by the addon (v129). Unsaved scenes stay empty (= automatic)."""
     s = getattr(scene, "gcapture_settings", None)
     if s is None or not filepath:
         return
@@ -2878,17 +2877,17 @@ def _gcapture_on_render_path_change(*args):
 
 
 def _gcapture_msgbus_subscribe():
-    """Aenderungen am Renderpfad sofort in Image Folder uebernehmen (v129).
-    Muss nach jedem Laden neu abonniert werden."""
+    """Apply changes to the render path to Image Folder immediately (v129).
+    Must be re-subscribed after every load."""
     bpy.msgbus.clear_by_owner(_GCAPTURE_MSGBUS_OWNER)
     bpy.msgbus.subscribe_rna(key=(bpy.types.RenderSettings, "filepath"),
                              owner=_GCAPTURE_MSGBUS_OWNER, args=(),
                              notify=_gcapture_on_render_path_change)
 
 
-# Uebernahme aus "Gaussian Render Scan" (bis 1.0.2, 23.09.2026): dieselben
-# Einstellungen und Markierungen unter dem neuen Namen. Laeuft nach jedem
-# Laden und beim Aktivieren; ohne Altdaten aendert sie nichts.
+# Migration from "Gaussian Render Scan" (up to 1.0.2, 23.09.2026): the same
+# settings and markers under the new name. Runs after every
+# load and on activation; without legacy data it changes nothing.
 _GCAPTURE_LEGACY_KEYS = (("gscan_prepared", "gcapture_prepared"),
                          ("gscan_res_ok", "gcapture_res_ok"),
                          ("gscan_base_loc", "gcapture_base_loc"),
@@ -2899,9 +2898,9 @@ _GCAPTURE_LEGACY_NAMES = (("GScan_Group", "GCapture_Group", "objects"),
 
 
 def _gcapture_migrate_legacy():
-    """Szenen aus Gaussian Render Scan uebernehmen. Die Einstellungen liegen
-    ab Blender 5.0 in den System-Properties, davor im Dict der Szene.
-    Rueckgabe: Anzahl uebernommener Eintraege."""
+    """Migrate scenes from Gaussian Render Scan. From Blender 5.0 the settings
+    live in the system properties, before that in the scene's dict.
+    Returns: number of migrated entries."""
     n = 0
     for scene in bpy.data.scenes:
         sysp = getattr(scene, "bl_system_properties_get", None)
@@ -2929,7 +2928,7 @@ def _gcapture_migrate_legacy():
             if attr is not None and me.attributes.get("gcapture_" + suffix) is None:
                 attr.name = "gcapture_" + suffix
                 n += 1
-    # Objekt- und Collection-Namen nur, wenn die Datei vom alten Add-on stammt.
+    # Object and collection names only if the file comes from the old add-on.
     if n:
         for a, b, kind in _GCAPTURE_LEGACY_NAMES:
             data = getattr(bpy.data, kind)
@@ -2952,7 +2951,7 @@ def _gcapture_migrate_timer():
 
 @persistent
 def _gcapture_on_load_post(*args):
-    _GCAPTURE_PROGRESS.clear()   # ein neues File hat keinen laufenden Vorgang
+    _GCAPTURE_PROGRESS.clear()   # a new file has no running operation
     try:
         _gcapture_migrate_legacy()
     except Exception as exc:
@@ -2963,14 +2962,14 @@ def _gcapture_on_load_post(*args):
 
 @persistent
 def _gcapture_on_save_pre(*args):
-    # Blender uebergibt den Zielpfad (Save As); sonst der aktuelle.
+    # Blender passes the target path (Save As); otherwise the current one.
     target = next((a for a in args if isinstance(a, str) and a), bpy.data.filepath)
     _gcapture_sync_all(target)
 
 
-# Szene vorbereiten (v113): Werte aus der Vorlage des Nutzers (Setup.blend,
-# 23.09.2026). Pfad relativ zur Szene -> Wert. Was eine Blender-Version nicht
-# kennt, wird uebersprungen.
+# Prepare the scene (v113): values from the user's template (Setup.blend,
+# 23.09.2026). Path relative to the scene -> value. Anything a Blender version
+# does not know is skipped.
 _GCAPTURE_PREPARE_SETTINGS = (
     ("render.engine", 'CYCLES'),
     ("cycles.samples", 1024),
@@ -2994,13 +2993,13 @@ _GCAPTURE_PREPARE_SETTINGS = (
     ("eevee.ray_tracing_options.backface_radiance_scale", 0.0),
 )
 
-# EEVEE-Preset fuer Captures (v1.1.5): so ansichtsunabhaengig und so nah an
-# Cycles wie moeglich -- Raytracing und Fast GI in voller Aufloesung, weiche
-# Schatten mit vielen Strahlen, Overscan gegen Randeffekte, mehr Samples.
-# Erste Fassung; per Messung (Cycles gegen EEVEE, Beetle) zu kalibrieren.
-# Aendert sich die Tabelle, _GCAPTURE_EEVEE_PRESET erhoehen: dann wird sie
-# beim naechsten EEVEE-Render erneut angewendet, sonst bleiben Aenderungen
-# des Nutzers erhalten.
+# EEVEE preset for captures (v1.1.5): as view-independent and as close to
+# Cycles as possible -- raytracing and Fast GI at full resolution, soft
+# shadows with many rays, overscan against edge artifacts, more samples.
+# First version; to be calibrated by measurement (Cycles vs. EEVEE, Beetle).
+# If the table changes, increase _GCAPTURE_EEVEE_PRESET: it is then
+# applied again on the next EEVEE render, otherwise the user's changes
+# are kept.
 _GCAPTURE_EEVEE_PRESET = 1
 _GCAPTURE_EEVEE_SETTINGS = (
     ("eevee.taa_render_samples", 256),
@@ -3027,8 +3026,8 @@ _GCAPTURE_EEVEE_SETTINGS = (
 
 
 def _gcapture_apply_settings(scene, table):
-    """(Pfad, Wert)-Tabelle auf die Szene anwenden; Rueckgabe: uebersprungene
-    Pfade (in dieser Blender-Version unbekannt)."""
+    """Apply a (path, value) table to the scene; returns: skipped
+    paths (unknown in this Blender version)."""
     skipped = []
     for path, value in table:
         owner_path, _, attr = path.rpartition(".")
@@ -3043,10 +3042,10 @@ def _gcapture_apply_settings(scene, table):
 
 
 def _gcapture_apply_prepare(scene, dtype):
-    """Cycles-Einstellungen von Prepare Scene. Blender 4.1: OpenImageDenoise
-    zaehlt beim Start alle SYCL-Geraete auf und scheitert mit aktuellen
-    Intel-Treibern (PI_ERROR_INVALID_VALUE) -- auch auf der CPU. Rendert
-    Cycles dort mit OptiX, entrauscht dessen Denoiser (v1.1.5)."""
+    """Cycles settings of Prepare Scene. Blender 4.1: OpenImageDenoise
+    enumerates all SYCL devices at startup and fails with current
+    Intel drivers (PI_ERROR_INVALID_VALUE) -- even on the CPU. If Cycles
+    renders with OptiX there, its denoiser does the denoising (v1.1.5)."""
     skipped = _gcapture_apply_settings(scene, _GCAPTURE_PREPARE_SETTINGS)
     _gcapture_fix_denoiser(scene, dtype)
     return skipped
@@ -3061,29 +3060,29 @@ def _gcapture_fix_denoiser(scene, dtype):
 
 
 def _gcapture_eevee_engine():
-    """Kennung von EEVEE in dieser Blender-Version (4.2-4.x: EEVEE Next)."""
+    """Identifier of EEVEE in this Blender version (4.2-4.x: EEVEE Next)."""
     items = {i.identifier for i in
              bpy.types.RenderSettings.bl_rna.properties['engine'].enum_items}
     return 'BLENDER_EEVEE_NEXT' if 'BLENDER_EEVEE_NEXT' in items else 'BLENDER_EEVEE'
 
 
-# Reihenfolge der GPU-Backends: das erste mit einer GPU gewinnt.
+# Order of the GPU backends: the first one with a GPU wins.
 _GCAPTURE_GPU_TYPES = ('OPTIX', 'CUDA', 'HIP', 'METAL', 'ONEAPI')
 
-# Startobjekte der Blender-Standardszene: (Name, Typ).
+# Start objects of the Blender default scene: (name, type).
 _GCAPTURE_START_OBJECTS = (("Cube", 'MESH'), ("Camera", 'CAMERA'), ("Light", 'LIGHT'))
 
 
 def _gcapture_setup_gpu():
-    """Cycles-Einstellungen: bestes GPU-Backend waehlen, dessen GPUs an,
-    CPU aus. Rueckgabe (Backend, [Geraetenamen]) oder (None, [])."""
+    """Cycles settings: choose the best GPU backend, its GPUs on,
+    CPU off. Returns (backend, [device names]) or (None, [])."""
     try:
         cp = bpy.context.preferences.addons["cycles"].preferences
     except (KeyError, AttributeError):
         return None, []
-    # Kein refresh_devices(): das fragt alle Backends ab, und Blender 4.1
-    # stuerzt mit aktuellen Intel-Treibern im oneAPI-Backend ab (sycl6.dll).
-    # get_devices_for_type fragt nur das jeweilige Backend.
+    # No refresh_devices(): it queries all backends, and Blender 4.1
+    # crashes with current Intel drivers in the oneAPI backend (sycl6.dll).
+    # get_devices_for_type queries only the respective backend.
     for dtype in _GCAPTURE_GPU_TYPES:
         try:
             devs = list(cp.get_devices_for_type(dtype))
@@ -3103,8 +3102,8 @@ def _gcapture_setup_gpu():
 
 
 def _gcapture_start_object_unchanged(obj):
-    """Nur das unveraenderte Startobjekt: Cube mit 8 Vertices, Kamera und
-    Licht an ihrer Startposition."""
+    """Only the unmodified start object: cube with 8 vertices, camera and
+    light at their start positions."""
     if obj.parent is not None or obj.children:
         return False
     if obj.type == 'MESH':
@@ -3117,16 +3116,16 @@ def _gcapture_start_object_unchanged(obj):
 
 
 def _gcapture_scene_prepared(scene):
-    """Prepare Scene lief in dieser Szene und sie rendert noch mit Cycles
-    (v138; vorher genuegte Cycles + GPU, was viele Startdateien schon sind)."""
+    """Prepare Scene ran in this scene and it still renders with Cycles
+    (v138; before, Cycles + GPU sufficed, which many start files already are)."""
     return (bool(scene.get("gcapture_prepared"))
             and scene.render.engine in ('CYCLES', 'BLENDER_EEVEE',
                                         'BLENDER_EEVEE_NEXT'))
 
 
 class GCAPTURE_OT_render_images(Operator):
-    """Rendert alle Kameras in den Datensatz (v1.1.5): Cycles mit den
-    Einstellungen von Prepare Scene, EEVEE mit dem Capture-Preset."""
+    """Renders all cameras into the dataset (v1.1.5): Cycles with the
+    Prepare Scene settings, EEVEE with the capture preset."""
     bl_idname = "gcapture.render_images"
     bl_label = "Render Images"
     bl_options = {'REGISTER'}
@@ -3155,7 +3154,7 @@ class GCAPTURE_OT_render_images(Operator):
                 and not bpy.app.is_job_running('RENDER'))
 
     def _prepare(self, context):
-        """Engine und Einstellungen setzen; Rueckgabe: Fehlertext oder None."""
+        """Set engine and settings; returns: error text or None."""
         scene = context.scene
         s = scene.gcapture_settings
         if not bpy.data.filepath:
@@ -3187,24 +3186,24 @@ class GCAPTURE_OT_render_images(Operator):
         if s.render_headless:
             s.render_script = _gcapture_render_script_path(bpy.data.filepath,
                                                            self.engine)
-        # Vor dem Rendern immer sichern (v1.1.5): Einstellungen, die kurz
-        # vorher noch geaendert wurden, gehen so nicht verloren; das Skript
-        # rendert ohnehin die gespeicherte Datei. bpy.data.is_dirty taugt
-        # nicht als Bedingung -- per Python gesetzte Werte (Engine, Preset)
-        # markiert Blender nicht als ungespeichert.
+        # Always save before rendering (v1.1.5): settings changed shortly
+        # before are thus not lost; the script renders the saved file
+        # anyway. bpy.data.is_dirty is not usable as a condition --
+        # Blender does not mark values set via Python (engine, preset)
+        # as unsaved.
         bpy.ops.wm.save_mainfile()
         self._saved = True
         return None
 
     def _write_script(self, context):
-        """Skript fuer das Rendern ohne Oberflaeche neben die (gerade
-        gesicherte) Szene schreiben (v1.1.5). Rueckgabe: Pfad."""
+        """Write the script for rendering without UI next to the (just
+        saved) scene (v1.1.5). Returns: path."""
         dtype = None
         if self.engine == 'CYCLES':
             dtype, _ = _gcapture_setup_gpu()
-        # Absolut: unter macOS meldet Blender den Pfad relativ, wenn es von
-        # der Kommandozeile gestartet wurde; das Skript wechselt aber erst in
-        # den Szenenordner (v1.1.5, im CI gefunden: Exit 127).
+        # Absolute: on macOS Blender reports the path as relative when it was
+        # started from the command line, but the script changes into the
+        # scene folder only later (v1.1.5, found in CI: exit 127).
         return _gcapture_write_render_script(
             bpy.data.filepath, self.engine, dtype,
             os.path.abspath(bpy.app.binary_path))
@@ -3221,7 +3220,7 @@ class GCAPTURE_OT_render_images(Operator):
             return {'FINISHED'}
         if self._saved:
             self.report({'INFO'}, "Scene saved - rendering")
-        # Blenders Renderfenster mit Fortschritt; Esc bricht ab.
+        # Blender's render window with progress; Esc cancels.
         bpy.ops.render.render('INVOKE_DEFAULT', animation=True)
         return {'FINISHED'}
 
@@ -3238,11 +3237,11 @@ class GCAPTURE_OT_render_images(Operator):
 
 
 def _gcapture_apply_image_format(scene, fmt):
-    """Bildformat der Render-Knoepfe (1.2.0): PNG oder TIFF, jeweils RGBA
-    8 bit. 16 bit bringt beim Training nichts (Test 26.09.2026); EXR bleibt
-    weg -- LichtFeld liest weder DWAA/DWAB noch Multilayer."""
+    """Image format of the render buttons (1.2.0): PNG or TIFF, each RGBA
+    8 bit. 16 bit brings no benefit for training (test 26.09.2026); EXR is
+    left out -- LichtFeld reads neither DWAA/DWAB nor multilayer."""
     im = scene.render.image_settings
-    if hasattr(im, "media_type"):          # Blender 5.x: vor dem Format setzen
+    if hasattr(im, "media_type"):          # Blender 5.x: set before the format
         im.media_type = 'IMAGE'
     im.file_format = fmt
     im.color_mode = 'RGBA'
@@ -3252,7 +3251,7 @@ def _gcapture_apply_image_format(scene, fmt):
 
 
 def _gcapture_format_ext(scene):
-    """Dateiendung, die Blender fuer das eingestellte Bildformat schreibt."""
+    """File extension Blender writes for the selected image format."""
     fmt = scene.render.image_settings.file_format
     return {'PNG': "png", 'TIFF': "tif", 'OPEN_EXR': "exr",
             'OPEN_EXR_MULTILAYER': "exr", 'JPEG': "jpg",
@@ -3260,7 +3259,7 @@ def _gcapture_format_ext(scene):
 
 
 def _gcapture_render_script_path(blend, engine):
-    """Pfad des Render-Skripts neben der Szene, je Engine und System."""
+    """Path of the render script next to the scene, per engine and system."""
     folder, name = os.path.split(blend)
     stem = os.path.splitext(name)[0]
     eng = "cycles" if engine == 'CYCLES' else "eevee"
@@ -3270,8 +3269,8 @@ def _gcapture_render_script_path(blend, engine):
 
 
 def _gcapture_write_render_script(blend, engine, dtype, blender):
-    """Doppelklick-Skript neben der Szene: rendert alle Frames im Hintergrund
-    mit derselben Blender-Version. Windows .cmd, macOS .command, sonst .sh."""
+    """Double-click script next to the scene: renders all frames in the background
+    with the same Blender version. Windows .cmd, macOS .command, otherwise .sh."""
     name = os.path.basename(blend)
     eng = "cycles" if engine == 'CYCLES' else "eevee"
     path = _gcapture_render_script_path(blend, engine)
@@ -3337,7 +3336,7 @@ class GCAPTURE_OT_prepare_scene(Operator):
         dtype, gpus = _gcapture_setup_gpu()
         skipped = _gcapture_apply_prepare(scene, dtype)
         scene.cycles.device = 'GPU' if dtype else 'CPU'
-        scene["gcapture_prepared"] = True     # Schritt erledigt (v138)
+        scene["gcapture_prepared"] = True     # step done (v138)
         removed = []
         for name, otype in _GCAPTURE_START_OBJECTS:
             obj = bpy.data.objects.get(name)
@@ -3441,8 +3440,8 @@ class GCAPTURE_OT_save_version(Operator):
                 "your choice")],
         default='NEW',
     )
-    # Wahlknoepfe als Toggles ueber mode (v121): nur ein Toggle kann mit
-    # alert rot erscheinen, ein gewaehlter Enum-Knopf bleibt blau.
+    # Choice buttons as toggles via mode (v121): only a toggle can appear
+    # red with alert, a selected enum button stays blue.
     opt_overwrite: BoolProperty(
         name="Overwrite", options={'SKIP_SAVE'},
         get=lambda self: self.mode == 'OVERWRITE',
@@ -3467,9 +3466,9 @@ class GCAPTURE_OT_save_version(Operator):
         default=True,
     )
 
-    # --- Ziel berechnen ------------------------------------------------
+    # --- Compute target ------------------------------------------------
     def _target(self):
-        """(Zielpfad, Name, vtag) fuer eine bereits gespeicherte Datei."""
+        """(target path, name, vtag) for an already saved file."""
         cur = bpy.data.filepath
         folder = os.path.dirname(cur)
         stem = os.path.splitext(os.path.basename(cur))[0]
@@ -3488,8 +3487,8 @@ class GCAPTURE_OT_save_version(Operator):
             os.path.splitext(os.path.basename(path))[0])[1]
 
     def _versions(self):
-        """(vtag der geladenen Datei, hoechste Nummer im Ordner, ist die
-        geladene die hoechste). v120."""
+        """(vtag of the loaded file, highest number in the folder, whether the
+        loaded one is the highest). v120."""
         cur = bpy.data.filepath
         stem = os.path.splitext(os.path.basename(cur))[0]
         name, vtag = _exp_split_name_version(stem)
@@ -3510,10 +3509,10 @@ class GCAPTURE_OT_save_version(Operator):
             return {'RUNNING_MODAL'}
         folder = os.path.dirname(bpy.data.filepath)
         stem = os.path.splitext(os.path.basename(bpy.data.filepath))[0]
-        # Vorgabe: die geladene Version, wenn sie die hoechste ist; sonst die
-        # naechste freie Nummer (v120). Ohne Version -> <Name>_v001.
+        # Default: the loaded version if it is the highest; otherwise the
+        # next free number (v120). Without version -> <Name>_v001.
         self.mode = 'OVERWRITE' if self._versions()[2] else 'NEW'
-        # Eigener Renderpfad bleibt, sofern nicht ausdruecklich gewuenscht (v129).
+        # A custom render path stays unless explicitly requested (v129).
         self.render_into_dataset = _gcapture_render_path_is_default_or_managed(
             context.scene)
         nums = _gcapture_version_files(folder, _gcapture_clean_name(
@@ -3540,7 +3539,7 @@ class GCAPTURE_OT_save_version(Operator):
         col = layout.column(align=True)
         if latest:
             orow = col.row(align=True)
-            orow.alert = self.mode == 'OVERWRITE'     # Ueberschreiben: rot (v121)
+            orow.alert = self.mode == 'OVERWRITE'     # overwrite: red (v121)
             orow.prop(self, "opt_overwrite", text="Overwrite: %s" % cur, toggle=True)
         col.prop(self, "opt_new", text="New version: %s" % new_name, toggle=True)
         crow = col.row(align=True)
@@ -3553,7 +3552,7 @@ class GCAPTURE_OT_save_version(Operator):
         if self.mode == 'CUSTOM':
             col.label(text="-> %s" % os.path.basename(self._target()[0]))
 
-        # Warnungen: Ziel existiert bereits / Renderbilder passen nicht mehr.
+        # Warnings: target already exists / render images no longer match.
         if self.mode in {'OVERWRITE', 'CUSTOM'}:
             path, name, ttag = self._target()
             if self.mode == 'CUSTOM' and os.path.isfile(path):
@@ -3577,7 +3576,7 @@ class GCAPTURE_OT_save_version(Operator):
         scene = context.scene
         if bpy.data.filepath:
             if self.mode == 'OVERWRITE' and not self._versions()[2]:
-                self.mode = 'NEW'      # aeltere Version nie ueberschreiben
+                self.mode = 'NEW'      # never overwrite an older version
             path, name, vtag = self._target()
         else:
             if not self.filepath:
@@ -3585,8 +3584,8 @@ class GCAPTURE_OT_save_version(Operator):
                 return {'CANCELLED'}
             folder = os.path.dirname(bpy.path.abspath(self.filepath))
             name = _gcapture_clean_name(self.filepath)
-            # Eingetippte Version (z. B. Porsche_v007) uebernehmen, wenn die
-            # Datei noch nicht existiert -- sonst naechste freie Version.
+            # Use a typed-in version (e.g. Porsche_v007) if the
+            # file does not exist yet -- otherwise the next free version.
             typed = _exp_split_name_version(os.path.splitext(
                 os.path.basename(self.filepath))[0])[1]
             path = None
@@ -3606,10 +3605,10 @@ class GCAPTURE_OT_save_version(Operator):
         if self.render_into_dataset:
             scene.render.filepath = _gcapture_managed_render_path(name, vtag)
             scene.gcapture_settings.exp_image_dir = ""
-        # relative_remap=False: der neue "//"-Renderpfad gilt schon relativ
-        # zum Zielordner und darf nicht umgerechnet werden. Neue Versionen
-        # liegen im selben Ordner, eine ungespeicherte Szene hat noch keine
-        # relativen Pfade -- es geht also nichts verloren.
+        # relative_remap=False: the new "//" render path is already relative
+        # to the target folder and must not be converted. New versions
+        # live in the same folder, an unsaved scene has no relative
+        # paths yet -- so nothing is lost.
         bpy.ops.wm.save_as_mainfile(filepath=path, relative_remap=False)
         msg = "Saved %s" % os.path.basename(path)
         if self.render_into_dataset:
@@ -3626,7 +3625,7 @@ class GCAPTURE_OT_save_version(Operator):
 
 
 # ----------------------------------------------------------------------
-# Inhalte der Abschnitte: von Unterpanels UND Guide-Karte genutzt (v89)
+# Section contents: used by subpanels AND the guide card (v89)
 # ----------------------------------------------------------------------
 def _gcapture_draw_camera(layout, context):
     s = context.scene.gcapture_settings
@@ -3649,7 +3648,7 @@ def _gcapture_draw_camera(layout, context):
     ccol.prop(s, "frame_start")
     ccol.prop(s, "focal_length")
     ccol.prop(s, "look_mode")
-    # Warnung: non-uniform scale + normal mode passen nicht zusammen.
+    # Warning: non-uniform scale + normal mode do not go together.
     if obj and obj.type == 'MESH' and s.look_mode == 'NORMAL':
         sc = obj.scale
         non_uniform = (abs(sc.x - sc.y) > 1e-4 or abs(sc.y - sc.z) > 1e-4)
@@ -3714,7 +3713,7 @@ def _gcapture_draw_build(layout, context):
     if not _gcapture_progress_draw(outer, "gcapture.build_animation"):
         brow = _gcapture_lock(outer).row()
         brow.scale_y = 1.4
-        # Waehrend Live Camera Lock aktiv: Build gesperrt (erst Finish).
+        # While Live Camera Lock is active: Build blocked (Finish first).
         brow.enabled = not s.live_lock
         _gcapture_action(brow, "gcapture.build_animation",
                     _gcapture_wt_status_build_poses(context, s)[0] != 'DONE',
@@ -3724,14 +3723,14 @@ def _gcapture_draw_build(layout, context):
         wrow = layout.row()
         wrow.alert = True
         wrow.label(text="Adjusted views - Build discards them", icon='ERROR')
-    # Wirkt beim naechsten Build -> gehoert hierher, nicht zu Schritt 5 (v126).
+    # Takes effect on the next Build -> belongs here, not to step 5 (v126).
     layout.prop(s, "save_after_build")
     if s.live_lock:
         layout.label(text="Finish Live Camera Adjust before rebuilding",
                      icon='INFO')
 
-    # Optional: Live Camera Lock (Feinjustierung). Einschalten startet
-    # sofort das Skalieren der Sphere (v95).
+    # Optional: Live Camera Lock (fine adjustment). Enabling it immediately
+    # starts scaling the sphere (v95).
     lbox = layout.box()
     if not s.live_lock:
         lbox.operator("gcapture.lock_start", icon='CON_CAMERASOLVER')
@@ -3772,11 +3771,11 @@ def _gcapture_draw_build(layout, context):
 
 def _gcapture_draw_render(layout, context):
     s = context.scene.gcapture_settings
-    # Nur die Aufloesung; die immer noetigen Schalter stehen unter
+    # Only the resolution; the always-needed switches are under
     # Advanced > Render Setup (v129).
     rrow = layout.row(align=True)
     rrow.enabled = s.set_resolution
-    # Zu Beginn einmal blau: bewusst bestaetigen oder aendern (v140).
+    # Blue once at the start: deliberately confirm or change (v140).
     if s.set_resolution and not context.scene.get("gcapture_res_ok"):
         split = rrow.split(factor=0.8, align=True)
         split.prop(s, "resolution")
@@ -3784,7 +3783,7 @@ def _gcapture_draw_render(layout, context):
     else:
         rrow.prop(s, "resolution")
 
-    # Szene speichern + Renderziel (v90).
+    # Save scene + render target (v90).
     box = layout.box()
     if bpy.data.filepath:
         box.label(text="Scene: %s" % os.path.basename(bpy.data.filepath),
@@ -3803,8 +3802,8 @@ def _gcapture_draw_render(layout, context):
                   icon='OUTPUT')
     _gcapture_action(box, "gcapture.save_version", not bpy.data.filepath, 'FILE_TICK')
 
-    # Rendern direkt aus dem Add-on (v1.1.5). Blau: der offene Schritt, und
-    # zwar die Engine, auf der die Szene gerade steht.
+    # Render directly from the add-on (v1.1.5). Blue: the open step, namely
+    # the engine the scene is currently set to.
     pending = _gcapture_wt_status_render(context, s)[0] != 'DONE'
     eevee = context.scene.render.engine != 'CYCLES'
     rcol = layout.column(align=True)
@@ -3812,7 +3811,7 @@ def _gcapture_draw_render(layout, context):
     rcol.row(align=True).prop(s, "render_format", expand=True)
     row = rcol.row(align=True)
     row.scale_y = 1.4
-    # Beschriftung sagt, was der Klick tut: rendern oder Skript schreiben.
+    # The label says what the click does: render or write a script.
     if s.render_headless:
         ext = (".cmd" if sys.platform.startswith("win") else
                ".command" if sys.platform == "darwin" else ".sh")
@@ -3837,7 +3836,7 @@ def _gcapture_draw_render(layout, context):
 
 
 def _gcapture_section(layout, title, icon):
-    """Kasten mit Ueberschrift, gliedert lange Schritte (v1.1.5)."""
+    """Box with a heading, structures long steps (v1.1.5)."""
     box = layout.box()
     box.label(text=title, icon=icon)
     return box.column()
@@ -3848,11 +3847,11 @@ def _gcapture_draw_export(layout, context):
     outer = layout
     layout = _gcapture_lock(outer)
 
-    # --- Datensatz: wohin, und woher die Bilder kommen -------------------
+    # --- Dataset: where to, and where the images come from ---------------
     ds = _gcapture_section(layout, "Dataset", 'FILE_FOLDER')
     ecol = ds.column(align=True)
-    # Bezeichnung ueber dem Feld: in der schmalen Seitenleiste wurde sie
-    # sonst abgeschnitten, und der Pfad bekommt die volle Breite (v129).
+    # Label above the field: in the narrow sidebar it was cut off
+    # otherwise, and the path gets the full width (v129).
     ecol.label(text="Output Folder:")
     orow = ecol.row(align=True)
     orow.prop(s, "exp_output_dir", text="")
@@ -3873,7 +3872,7 @@ def _gcapture_draw_export(layout, context):
     if (s.exp_image_dir or "").strip() and not s.exp_image_dir.startswith("//"):
         op = irow.operator("gcapture.path_relative", text="", icon='DOT')
         op.prop = "exp_image_dir"
-    # Rendert die Szene schon in den Datensatz, sind Copy/Move ueberfluessig.
+    # If the scene already renders into the dataset, Copy/Move are unnecessary.
     inplace = _exp_same_dir(_exp_resolve_image_dir(s),
                             os.path.join(_exp_resolve_output_dir(s), "images"))
     if inplace:
@@ -3888,14 +3887,14 @@ def _gcapture_draw_export(layout, context):
                        icon='ERROR')
             wcol.label(text="Only runs if all images are present", icon='INFO')
         elif s.exp_image_mode == 'NONE':
-            # LichtFeld/COLMAP lesen images/ neben sparse/ -- ohne Bilder kein
-            # Training. Mit eigenem Bildordner ist das der haeufigste Fehler.
+            # LichtFeld/COLMAP read images/ next to sparse/ -- no images, no
+            # training. With a separate image folder this is the most common mistake.
             wrow = ds.row()
-            wrow.alert = True       # immer rot: ohne Bilder kein Training (v125)
+            wrow.alert = True       # always red: no images, no training (v125)
             wrow.label(text="Images are not in the dataset - choose Copy or Move",
                        icon='ERROR')
 
-    # --- Startpunkte: Quelle, Menge, Filter, Wiederverwendung --------------
+    # --- Start points: source, amount, filter, reuse -----------------------
     pts = _gcapture_section(layout, "Start Points", 'OUTLINER_DATA_POINTCLOUD')
     pcol = pts.column(align=True)
     pcol.label(text="Point Source:")
@@ -3909,7 +3908,7 @@ def _gcapture_draw_export(layout, context):
                    icon='OUTLINER_COLLECTION')
     vcol = pts.column(align=True)
     vcol.prop(s, "exp_use_vertex_count")
-    # Vertex-Zahlen nur einmal je Neuzeichnen ermitteln (v110).
+    # Determine vertex counts only once per redraw (v110).
     try:
         counts = _exp_vertex_counts(context.scene, s)
     except Exception:
@@ -3967,7 +3966,7 @@ def _gcapture_draw_export(layout, context):
         else:
             rrow.label(text="No stored point cloud yet", icon='INFO')
 
-    # --- Massstab und Achsen ---------------------------------------------
+    # --- Scale and axes --------------------------------------------------
     sc = _gcapture_section(layout, "Scale & Axes", 'ORIENTATION_GLOBAL')
     scol = sc.column(align=True)
     scol.prop(s, "exp_auto_scale")
@@ -3976,8 +3975,8 @@ def _gcapture_draw_export(layout, context):
     sub.prop(s, "exp_target_radius")
     sc.prop(s, "exp_zup_to_yup")
 
-    # Warnung, wenn im Zielordner schon ein Export liegt -- der Export
-    # ueberschreibt sparse/0 (und images/) ohne Rueckfrage (v84).
+    # Warning if the target folder already contains an export -- the export
+    # overwrites sparse/0 (and images/) without asking (v84).
     try:
         out_dir = _exp_resolve_output_dir(s)
         if _exp_output_has_export(out_dir):
@@ -4000,18 +3999,18 @@ def _gcapture_draw_export(layout, context):
         rcol.label(text="Last export: {:,} points".format(s.exp_last_points),
                    icon='CHECKMARK')
         if s.exp_last_detail:
-            # Umbrechen statt abschneiden (v1.1.5).
+            # Wrap instead of truncating (v1.1.5).
             for line in _gcapture_textwrap.wrap(s.exp_last_detail, 42):
                 rcol.label(text=line)
 
 
 # ----------------------------------------------------------------------
-# Guide: fuehrt Einsteiger Schritt fuer Schritt durch den Ablauf (v89)
+# Guide: walks beginners through the workflow step by step (v89)
 # ----------------------------------------------------------------------
-# Blender erlaubt Addons nicht, Panels auf-/zuzuklappen. Darum blendet der
-# Guide die Unterpanels aus (poll) und zeigt im Hauptpanel eine Karte mit
-# Erklaerung, den Bedienelementen des Schritts (dieselben _gcapture_draw_*-
-# Funktionen wie die Unterpanels) und einer Statusanzeige.
+# Blender does not let add-ons expand/collapse panels. So the guide
+# hides the subpanels (poll) and shows a card in the main panel with an
+# explanation, the controls of the step (the same _gcapture_draw_*
+# functions as the subpanels) and a status display.
 import textwrap as _gcapture_textwrap
 
 
@@ -4218,14 +4217,14 @@ _GCAPTURE_WT_STATUS_ICON = {'DONE': 'CHECKMARK', 'TODO': 'ERROR',
 
 
 def _gcapture_wrap(layout, context, text, indent_px=0):
-    """Blender bricht Labels nicht um: Text nach Panelbreite umbrechen.
-    indent_px: Breite, die links schon belegt ist (Nummer der Anleitung)."""
+    """Blender does not wrap labels: wrap text to the panel width.
+    indent_px: width already occupied on the left (instruction number)."""
     width = context.region.width if context.region else 300
     try:
         scale = context.preferences.system.ui_scale
     except Exception:
         scale = 1.0
-    scale = scale if scale and scale > 0.1 else 1.0   # Hintergrund: 0
+    scale = scale if scale and scale > 0.1 else 1.0   # background: 0
     chars = max(20, int((width - 40 - indent_px * scale) / (6.2 * scale)))
     col = layout.column(align=True)
     col.scale_y = 0.85
@@ -4234,8 +4233,8 @@ def _gcapture_wrap(layout, context, text, indent_px=0):
 
 
 def _gcapture_wt_draw_text(layout, context, step):
-    """Guide-Text (v112): Zweck, nummerierte Schritte mit haengendem
-    Einzug, Check und Hinweis."""
+    """Guide text (v112): purpose, numbered steps with hanging
+    indent, check and hint."""
     _gcapture_wrap(layout, context, step['goal'])
     if step['steps']:
         layout.separator(factor=0.5)
@@ -4247,7 +4246,7 @@ def _gcapture_wt_draw_text(layout, context, step):
             num.scale_y = 0.85
             num.label(text="%d." % i)
             _gcapture_wrap(row.column(align=True), context, line, indent_px=34)
-    # Check und Hinweise als Aufzaehlung (v131).
+    # Check and hints as a bulleted list (v131).
     note = step['note']
     bullets = ((["Check: " + step['check']] if step['check'] else [])
                + ([note] if isinstance(note, str) and note else list(note or [])))
@@ -4263,11 +4262,11 @@ def _gcapture_wt_draw_text(layout, context, step):
             _gcapture_wrap(row.column(align=True), context, line, indent_px=34)
 
 
-# Fortschritt langer Ablaeufe (Build, Export) im Panel an der Stelle des
-# Knopfs statt in der Kopfzeile des Viewports (v1.1.4). Nur zur Laufzeit.
-_GCAPTURE_PROGRESS = {}   # op_id -> (Anteil 0..1, Text, Zeitpunkt)
-# Aeltere Eintraege gelten als verwaist (Absturz ohne Aufraeumen) und
-# sperren das Panel nicht mehr.
+# Progress of long operations (Build, Export) in the panel in place of
+# the button instead of in the viewport header (v1.1.4). Runtime only.
+_GCAPTURE_PROGRESS = {}   # op_id -> (fraction 0..1, text, timestamp)
+# Older entries count as orphaned (crash without cleanup) and
+# no longer lock the panel.
 _GCAPTURE_PROGRESS_STALE = 60.0
 
 
@@ -4293,22 +4292,22 @@ def _gcapture_progress_clear(op_id):
 
 
 def _gcapture_busy():
-    """True, solange Build oder Export laeuft (v1.1.4)."""
+    """True while Build or Export is running (v1.1.4)."""
     now = time.time()
     return any(now - p[2] < _GCAPTURE_PROGRESS_STALE
                for p in _GCAPTURE_PROGRESS.values())
 
 
 def _gcapture_lock(layout):
-    """Spalte, die waehrend eines Laufs gesperrt ist; der Fortschrittsbalken
-    selbst steht ausserhalb und bleibt lesbar."""
+    """Column that is locked during a run; the progress bar
+    itself sits outside it and stays readable."""
     col = layout.column()
     col.enabled = not _gcapture_busy()
     return col
 
 
 def _gcapture_progress_draw(layout, op_id):
-    """Zeichnet den Fortschritt von op_id, falls er laeuft -> True."""
+    """Draws the progress of op_id if it is running -> True."""
     p = _GCAPTURE_PROGRESS.get(op_id)
     if p is None or time.time() - p[2] >= _GCAPTURE_PROGRESS_STALE:
         return False
@@ -4322,8 +4321,8 @@ def _gcapture_progress_draw(layout, op_id):
 
 
 def _gcapture_action(layout, op_id, pending, icon, text=None):
-    """Knopf eines Pflichtschritts: blau (gedrueckt), solange der Schritt
-    offen ist, danach neutral (v137)."""
+    """Button of a mandatory step: blue (pressed) while the step
+    is open, neutral afterwards (v137)."""
     kw = {} if text is None else {"text": text}
     return layout.operator(op_id, icon=icon, depress=bool(pending), **kw)
 
@@ -4353,7 +4352,7 @@ def _gcapture_draw_walkthrough(layout, context):
     _gcapture_wt_draw_text(card, context, step)
     card.separator()
     if step['draw'] in (_gcapture_draw_build, _gcapture_draw_export):
-        step['draw'](card.column(), context)   # sperren selbst, Balken frei
+        step['draw'](card.column(), context)   # lock itself, bar stays free
     else:
         step['draw'](_gcapture_lock(card), context)
     card.separator()
@@ -4363,7 +4362,7 @@ def _gcapture_draw_walkthrough(layout, context):
     except Exception as exc:
         state, msg = 'INFO', "Status unavailable (%s)" % exc
     srow = card.row()
-    srow.alert = state in {'TODO', 'MISSING'}   # Offenes rot (v124/v125)
+    srow.alert = state in {'TODO', 'MISSING'}   # open one red (v124/v125)
     srow.label(text=msg, icon=_GCAPTURE_WT_STATUS_ICON.get(state, 'INFO'))
 
     nav = card.row(align=True)
@@ -4374,7 +4373,7 @@ def _gcapture_draw_walkthrough(layout, context):
     op = back.operator("gcapture.walkthrough_nav", text="Back", icon='TRIA_LEFT')
     op.delta = -1
     nav.operator("gcapture.walkthrough_exit", text="Exit", icon='X')
-    # Voraussetzungen erfuellt -> Next blau (v139).
+    # Prerequisites met -> Next blue (v139).
     ready = state in {'DONE', 'OPTIONAL'}
     if idx < n - 1:
         op = nav.operator("gcapture.walkthrough_nav", text="Next", icon='TRIA_RIGHT',
@@ -4413,8 +4412,8 @@ class GCAPTURE_OT_walkthrough_nav(Operator):
 
 
 def _gcapture_wt_show_props_tab(context, tab):
-    """Schaltet die Properties-Editoren des Fensters auf den Reiter des
-    Guide-Schritts (v124: Schritt 5 -> Output, dort steht der Ausgabepfad)."""
+    """Switches the window's Properties editors to the tab of the
+    guide step (v124: step 5 -> Output, where the output path is)."""
     if not tab or context.window is None:
         return
     for area in context.window.screen.areas:
@@ -4436,8 +4435,8 @@ class GCAPTURE_OT_walkthrough_exit(Operator):
 
 
 class GCAPTURE_PT_panel(Panel):
-    """Hauptpanel. Die Abschnitte sind Unterpanels (v85) -- einklappbar,
-    mit Phasenfarbe im Kopf. bl_idname bleibt unveraendert."""
+    """Main panel. The sections are subpanels (v85) -- collapsible,
+    with the phase color in the header. bl_idname stays unchanged."""
     bl_label = "Gaussian Render Capture"
     bl_idname = "GCAPTURE_PT_panel"
     bl_space_type = 'VIEW_3D'
@@ -4463,21 +4462,21 @@ class GCAPTURE_PT_panel(Panel):
 
 
 class _GCAPTURE_SubPanel:
-    """Gemeinsame Basis der Unterpanels: Kopf mit farbigem Phasen-Icon
-    und Schritt-Symbol."""
+    """Common base of the subpanels: header with colored phase icon
+    and step symbol."""
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = "Gaussian Render Capture"
     bl_parent_id = "GCAPTURE_PT_panel"
-    # Initial zugeklappt: der Nutzer klickt sich durch die Schritte (v89).
+    # Initially collapsed: the user clicks through the steps (v89).
     bl_options = {'DEFAULT_CLOSED'}
-    gcapture_color = None     # Rueckfall, falls die Plaketten fehlen
-    gcapture_badge = None     # Name in _GCAPTURE_BADGES (farbige Nummern-Plakette)
+    gcapture_color = None     # fallback if the badges are missing
+    gcapture_badge = None     # Name in _GCAPTURE_BADGES (colored number badge)
     gcapture_icon = None
 
     @classmethod
     def poll(cls, context):
-        # Waehrend der Guide laeuft, zeigt das Hauptpanel nur die Guide-Karte.
+        # While the guide is running, the main panel shows only the guide card.
         return not context.scene.gcapture_settings.wt_active
 
     def draw_header(self, context):
@@ -4578,7 +4577,7 @@ class GCAPTURE_PT_export(_GCAPTURE_SubPanel, Panel):
 
 
 class GCAPTURE_PT_advanced(_GCAPTURE_SubPanel, Panel):
-    """Selten gebrauchte Optionen + Maintainer/Lizenz (zugeklappt)."""
+    """Rarely used options + maintainer/license (collapsed)."""
     bl_idname = "GCAPTURE_PT_advanced"
     gcapture_icon = 'PREFERENCES'
     bl_label = "Advanced"
@@ -4588,7 +4587,7 @@ class GCAPTURE_PT_advanced(_GCAPTURE_SubPanel, Panel):
     def draw(self, context):
         layout = _gcapture_lock(self.layout)
         s = context.scene.gcapture_settings
-        # Eigene Kamera-Leitgitter statt/zusaetzlich zur Sphere (v93).
+        # Custom camera guide meshes instead of/in addition to the sphere (v93).
         glbox = layout.box()
         glbox.label(text="Custom Camera Guides", icon='MESH_ICOSPHERE')
         glbox.prop(s, "use_guide_list")
@@ -4605,12 +4604,12 @@ class GCAPTURE_PT_advanced(_GCAPTURE_SubPanel, Panel):
                         % (len(s.guides),
                            "y" if len(s.guides) == 1 else "ies",
                            total_objs))
-        # Interior-Test nur mit eigenen Leitgittern sinnvoll.
+        # Interior test only makes sense with custom guide meshes.
         if _gcapture_has_custom_guides(s):
             glbox.prop(s, "skip_interior")
 
-        # Render Setup (v129, vorher Schritt 5): wirken sofort und bei
-        # jedem Build; fuer ein Capture immer an.
+        # Render Setup (v129, previously step 5): takes effect immediately and
+        # on every build; always on for a capture.
         rbox = layout.box()
         rbox.label(text="Render Setup (keep on for a capture)", icon='SCENE')
         rcol = rbox.column(align=True)
@@ -4619,7 +4618,7 @@ class GCAPTURE_PT_advanced(_GCAPTURE_SubPanel, Panel):
         rcol.prop(s, "set_frame_range")
         rcol.prop(s, "set_resolution")
 
-        # --- Maintainer & Lizenz (GPL-Attribution, Pflicht) ---
+        # --- Maintainer & license (GPL attribution, mandatory) ---
         layout.separator()
         foot = layout.column(align=True)
         foot.scale_y = 0.8
@@ -4644,19 +4643,19 @@ class GCAPTURE_PT_advanced(_GCAPTURE_SubPanel, Panel):
 
 
 # ----------------------------------------------------------------------
-# COLMAP-Export (integriert aus export_colmap_for_postshot_v02)
+# COLMAP export (integrated from export_colmap_for_postshot_v02)
 # ----------------------------------------------------------------------
-# Achsenkorrektur Blender-Kamera -> COLMAP-Kamera (180 Grad um Kamera-X).
+# Axis correction Blender camera -> COLMAP camera (180 degrees about camera X).
 _BLENDER_TO_COLMAP = Matrix((
     (1.0, 0.0, 0.0),
     (0.0, -1.0, 0.0),
     (0.0, 0.0, -1.0),
 ))
-# Welt-Drehung Z-up -> Y-up (+90 Grad um Welt-X).
-# (x, y, z) -> (x, -z, y): Blender-Z (oben) wird zu -Y. Postshot/COLMAP
-# zaehlt Y nach unten, daher steht das Modell damit aufrecht. Die
-# Variante -90 (x, z, -y) stellt die Achse zwar auch auf, dreht das
-# Modell aber um 180 Grad (Kopfstand).
+# World rotation Z-up -> Y-up (+90 degrees about world X).
+# (x, y, z) -> (x, -z, y): Blender Z (up) becomes -Y. Postshot/COLMAP
+# counts Y downward, so this keeps the model upright. The
+# -90 variant (x, z, -y) also aligns the axis, but rotates the
+# model by 180 degrees (upside down).
 _WORLD_Z_UP_TO_Y_UP = Matrix((
     (1.0, 0.0, 0.0),
     (0.0, 0.0, -1.0),
@@ -4666,16 +4665,16 @@ _EXP_KNOWN_EXTS = ("tif", "tiff", "png", "jpg", "jpeg", "exr", "tga", "bmp")
 
 
 # ----------------------------------------------------------------------
-# Ray-Casting-Helfer (Interior-Kamera-Erkennung)
-# Abgeleitet aus "Gauss Cannon" von Arash Keshmirian (Warpgate Labs),
+# Ray-casting helpers (interior camera detection)
+# Derived from "Gauss Cannon" by Arash Keshmirian (Warpgate Labs),
 # GPL-3.0-or-later.
-# Quelle: https://github.com/warpgatelabs/gauss-cannon
-# An unsere Datenstrukturen angepasst; siehe Lizenzsektion im Header.
+# Source: https://github.com/warpgatelabs/gauss-cannon
+# Adapted to our data structures; see the license section in the header.
 # ----------------------------------------------------------------------
 def _rc_is_camera_inside_mesh(context, camera_pos, guide_objects):
-    """True, wenn camera_pos innerhalb einer sichtbaren Nicht-Leitgitter-
-    Mesh liegt. Odd-even-Regel: ungerade Anzahl Schnittpunkte entlang
-    eines Strahls -> innen."""
+    """True if camera_pos lies inside a visible non-guide
+    mesh. Odd-even rule: odd number of intersections along
+    a ray -> inside."""
     for obj in context.view_layer.objects:
         if (obj.type != 'MESH' or not obj.visible_get()
                 or obj.hide_render or obj in guide_objects):
@@ -4685,7 +4684,7 @@ def _rc_is_camera_inside_mesh(context, camera_pos, guide_objects):
         ray_dir = Vector((1.0, 0.0, 0.0))
         count = 0
         cur = pos_local.copy()
-        # Begrenze die Iterationen, um Endlosschleifen sicher zu vermeiden.
+        # Limit the iterations to reliably avoid infinite loops.
         for _ in range(1000):
             result, location, normal, index = obj.ray_cast(cur, ray_dir)
             if not result:
@@ -4698,8 +4697,8 @@ def _rc_is_camera_inside_mesh(context, camera_pos, guide_objects):
 
 
 def _rc_build_visible_mesh_bvh_cache(context, guide_objects):
-    """Liste von Welt-Raum-BVHTrees aller sichtbaren Nicht-Leitgitter-
-    Meshes (depsgraph-evaluiert, Modifier beruecksichtigt)."""
+    """List of world-space BVHTrees of all visible non-guide
+    meshes (depsgraph-evaluated, modifiers taken into account)."""
     depsgraph = context.evaluated_depsgraph_get()
     cache = []
     for obj in context.view_layer.objects:
@@ -4722,8 +4721,8 @@ def _rc_build_visible_mesh_bvh_cache(context, guide_objects):
 
 
 def _rc_build_near_frustum_bvh(cam_data, cam_pos, look_dir, right, up, aspect):
-    """Welt-Raum-BVH des Volumens zwischen Kamera und Near-Plane.
-    PERSP -> 5-Vertex-Pyramide, ORTHO -> 8-Vertex-Box."""
+    """World-space BVH of the volume between camera and near plane.
+    PERSP -> 5-vertex pyramid, ORTHO -> 8-vertex box."""
     near_clip = cam_data.clip_start
     if cam_data.type == 'PERSP':
         tan_half = math.tan(cam_data.angle / 2.0)
@@ -4761,8 +4760,8 @@ def _rc_build_near_frustum_bvh(cam_data, cam_pos, look_dir, right, up, aspect):
 
 def _rc_geometry_within_near_clip(cam_data, cam_pos, look_dir, right, up,
                                   mesh_bvh_cache, aspect):
-    """True, wenn sichtbare Geometrie in das Near-Clip-Volumen der Kamera
-    ragt (zwei Tests: naechster Punkt im Near-Radius + BVH-Overlap)."""
+    """True if visible geometry reaches into the camera's near-clip volume
+    (two tests: nearest point within near radius + BVH overlap)."""
     if not mesh_bvh_cache:
         return False
     near_clip = cam_data.clip_start
@@ -4807,10 +4806,10 @@ def _exp_world_transform(s):
 
 
 def _exp_write_scale_info(out_dir, s, scale, mean_r, n_poses, n_points):
-    """Schreibt <vNNN>_gcapture_export.json NEBEN den Datensatzordner (v126,
-    v145: nicht hinein -- Postshot liest jede .json im Datensatz als
-    NeRF-Kameradatei und bricht ab). Massstab und
-    Achsenumrechnung des Exports. Datensatz = scale * W @ Blender-Welt."""
+    """Writes <vNNN>_gcapture_export.json NEXT TO the dataset folder (v126,
+    v145: not into it -- Postshot reads every .json in the dataset as a
+    NeRF camera file and aborts). Scale and
+    axis conversion of the export. Dataset = scale * W @ Blender world."""
     import json
     import datetime
     W = Matrix(_exp_world_transform(s)).to_4x4()
@@ -4838,10 +4837,10 @@ def _exp_write_scale_info(out_dir, s, scale, mean_r, n_poses, n_points):
                  "only."),
     }
     ds = os.path.normpath(out_dir)
-    old = os.path.join(ds, "gscan_export.json")        # Ablage bis v144
+    old = os.path.join(ds, "gscan_export.json")        # location up to v144
     if os.path.isfile(old):
         os.remove(old)
-    # Gaussian Render Scan (bis 1.0.2) schrieb <vNNN>_gscan_export.json.
+    # Gaussian Render Scan (up to 1.0.2) wrote <vNNN>_gscan_export.json.
     legacy = os.path.join(os.path.dirname(ds),
                           os.path.basename(ds) + "_gscan_export.json")
     if os.path.isfile(legacy):
@@ -4864,9 +4863,9 @@ def _exp_resolve_image_dir(s):
 
 
 def _exp_detect_frames(image_dir, prefer=None):
-    """Bildfolge im Ordner erkennen. prefer: Endung des eingestellten
-    Formats -- liegt sie vor, gewinnt sie auch gegen mehr Bilder eines
-    anderen Formats aus einem frueheren Durchgang (1.2.0)."""
+    """Detect the image sequence in the folder. prefer: extension of the
+    configured format -- if present, it wins even against more images of
+    another format from an earlier run (1.2.0)."""
     if not image_dir or not os.path.isdir(image_dir):
         return None, None, []
     candidates = []
@@ -4902,8 +4901,8 @@ def _exp_detect_frames(image_dir, prefer=None):
 
 
 def _exp_image_size(image_path):
-    """Liest die tatsaechliche Pixelgroesse einer Bilddatei ueber Blenders
-    Bild-API (ohne Zusatzbibliothek). Liefert (w, h) oder None."""
+    """Reads the actual pixel size of an image file via Blender's
+    image API (no extra library). Returns (w, h) or None."""
     if not image_path or not os.path.isfile(image_path):
         return None
     img = None
@@ -4916,7 +4915,7 @@ def _exp_image_size(image_path):
     except Exception:
         return None
     finally:
-        # Geladenes Bild wieder entfernen, damit die .blend nicht zumuellt.
+        # Remove the loaded image again so the .blend does not get cluttered.
         if img is not None:
             try:
                 bpy.data.images.remove(img)
@@ -4925,12 +4924,12 @@ def _exp_image_size(image_path):
 
 
 def _exp_intrinsics(cam_data, scene, real_size=None):
-    """fx, fy, cx, cy, w, h in Pixeln (PINHOLE).
-    Wenn real_size (w, h) gegeben ist (echte Bildgroesse aus der Datei),
-    werden Aufloesung und Principal Point daraus abgeleitet -- damit
-    cameras.txt IMMER zu den real vorhandenen Bildern passt, unabhaengig
-    von den Render-Settings. Die Brennweite wird auf die echte Bildbreite
-    skaliert."""
+    """fx, fy, cx, cy, w, h in pixels (PINHOLE).
+    If real_size (w, h) is given (actual image size from the file),
+    resolution and principal point are derived from it -- so that
+    cameras.txt ALWAYS matches the images actually present, regardless
+    of the render settings. The focal length is scaled to the actual
+    image width."""
     render = scene.render
     if real_size is not None:
         w, h = int(real_size[0]), int(real_size[1])
@@ -4938,9 +4937,9 @@ def _exp_intrinsics(cam_data, scene, real_size=None):
         w = int(render.resolution_x * render.resolution_percentage / 100.0)
         h = int(render.resolution_y * render.resolution_percentage / 100.0)
 
-    # Blenders Kameramodell (v1.1.3): Pixel-Seitenverhaeltnis, Sensor-Fit
-    # und Shift beziehen sich auf die effektive Bildgroesse (Pixel x Aspekt).
-    # Bei AUTO bestimmt die laengere effektive Kante, die Sensorbreite gilt.
+    # Blender's camera model (v1.1.3): pixel aspect ratio, sensor fit
+    # and shift refer to the effective image size (pixels x aspect).
+    # With AUTO the longer effective edge decides; the sensor width applies.
     pa_x = max(render.pixel_aspect_x, 1e-6)
     pa_y = max(render.pixel_aspect_y, 1e-6)
     size_x, size_y = w * pa_x, h * pa_y
@@ -4973,8 +4972,8 @@ def _exp_pose_w2c(cam, scale, W):
 
 
 def _exp_srgb_byte(c):
-    """Linear-Float (0..1) -> sRGB-kodiertes Byte (0..255).
-    Blender-Materialfarben sind linear; COLMAP/Viewer erwarten sRGB."""
+    """Linear float (0..1) -> sRGB-encoded byte (0..255).
+    Blender material colors are linear; COLMAP/viewers expect sRGB."""
     c = max(0.0, min(1.0, c))
     if c <= 0.0031308:
         s = 12.92 * c
@@ -4984,10 +4983,10 @@ def _exp_srgb_byte(c):
 
 
 def _exp_material_base_color(mat):
-    """Liefert (r,g,b) 0..1 der Principled-BSDF-Base-Color eines Materials,
-    oder None, wenn nicht ermittelbar."""
+    """Returns (r,g,b) 0..1 of a material's Principled BSDF base color,
+    or None if it cannot be determined."""
     if mat is None or not mat.use_nodes or mat.node_tree is None:
-        # Material ohne Nodes: diffuse_color als Fallback.
+        # Material without nodes: diffuse_color as fallback.
         if mat is not None:
             dc = mat.diffuse_color
             return (dc[0], dc[1], dc[2])
@@ -4998,14 +4997,14 @@ def _exp_material_base_color(mat):
             if inp is not None:
                 v = inp.default_value
                 return (v[0], v[1], v[2])
-    # Kein Principled gefunden: erstes Material mit diffuse_color.
+    # No Principled found: first material with diffuse_color.
     dc = mat.diffuse_color
     return (dc[0], dc[1], dc[2])
 
 
 def _exp_object_material_colors(obj):
-    """Liste von (r,g,b) je Material-Slot des Objekts (linear 0..1).
-    Fehlende/unlesbare Slots -> mittleres Grau."""
+    """List of (r,g,b) per material slot of the object (linear 0..1).
+    Missing/unreadable slots -> medium gray."""
     colors = []
     if not obj.material_slots:
         return [(0.5, 0.5, 0.5)]
@@ -5016,9 +5015,9 @@ def _exp_object_material_colors(obj):
 
 
 def _exp_vertex_color_lookup(mesh):
-    """Baut, falls vorhanden, ein Dict vert_index -> (r,g,b) aus dem
-    aktiven Color-Attribute. Liefert None, wenn keine Farbattribute da
-    sind. Mittelt ueber alle Loops, die einen Vertex referenzieren."""
+    """Builds, if present, a dict vert_index -> (r,g,b) from the
+    active color attribute. Returns None if there are no color
+    attributes. Averages over all loops that reference a vertex."""
     ca = getattr(mesh, "color_attributes", None)
     if not ca or len(ca) == 0:
         return None
@@ -5027,12 +5026,12 @@ def _exp_vertex_color_lookup(mesh):
     acc = {}
     cnt = {}
     if layer.domain == 'POINT':
-        # Direkt pro Vertex.
+        # Directly per vertex.
         for i, d in enumerate(layer.data):
             c = d.color
             acc[i] = (c[0], c[1], c[2])
             cnt[i] = 1
-    else:  # 'CORNER' -> ueber Loops auf Vertices mitteln
+    else:  # 'CORNER' -> average over loops onto vertices
         for poly in mesh.polygons:
             for li in poly.loop_indices:
                 vi = mesh.loops[li].vertex_index
@@ -5049,15 +5048,15 @@ def _exp_vertex_color_lookup(mesh):
 
 
 def _exp_crop_bounds_world(s):
-    """Liefert (min_vec, max_vec) der Welt-Raum-Bounding-Box des Crop-
-    Objekts inkl. Margin, oder None wenn Crop aus/kein Objekt. Die Bounds
-    sind in BLENDER-Weltkoordinaten -- der Test erfolgt VOR der Y-up-/
-    Scale-Transformation der Punkte."""
+    """Returns (min_vec, max_vec) of the world-space bounding box of the
+    crop object incl. margin, or None if crop is off/no object. The bounds
+    are in BLENDER world coordinates -- the test happens BEFORE the Y-up/
+    scale transformation of the points."""
     if not s.exp_crop_enable or s.exp_crop_object is None:
         return None
     obj = s.exp_crop_object
     mw = obj.matrix_world
-    # bound_box: 8 lokale Eckpunkte; in Weltkoordinaten transformieren.
+    # bound_box: 8 local corners; transform into world coordinates.
     corners = [mw @ Vector(c) for c in obj.bound_box]
     if not corners:
         return None
@@ -5071,7 +5070,7 @@ def _exp_crop_bounds_world(s):
 
 
 def _exp_point_in_bounds(co_world, bounds):
-    """True, wenn co_world (Blender-Weltkoord) innerhalb bounds liegt."""
+    """True if co_world (Blender world coord) lies within bounds."""
     mn, mx = bounds
     return (mn.x <= co_world.x <= mx.x and
             mn.y <= co_world.y <= mx.y and
@@ -5079,10 +5078,10 @@ def _exp_point_in_bounds(co_world, bounds):
 
 
 def _exp_build_scene_bvh(objs):
-    """Einzelner Welt-Raum-BVHTree ueber alle angegebenen Meshes.
-    Abgeleitet aus "Gauss Cannon" von Arash Keshmirian (Warpgate Labs),
+    """Single world-space BVHTree over all given meshes.
+    Derived from "Gauss Cannon" by Arash Keshmirian (Warpgate Labs),
     GPL-3.0-or-later;
-    siehe Lizenzsektion im Header."""
+    see the license section in the header."""
     depsgraph = bpy.context.evaluated_depsgraph_get()
     vert_arrays = []
     all_polys = []
@@ -5112,9 +5111,9 @@ def _exp_build_scene_bvh(objs):
 
 
 def _exp_visible_ray(p, bvh, cam_positions, eps=1e-3):
-    """True, wenn der Weltpunkt p von mindestens einer Kamera frei gesehen
-    wird (kein anderes Geometrie-Teil davor). Kameras nach Naehe sortiert,
-    Early-Out beim ersten freien Sichtkontakt. Numerisch verifiziert."""
+    """True if the world point p is seen unobstructed by at least one camera
+    (no other piece of geometry in front). Cameras sorted by proximity,
+    early out at the first unobstructed line of sight. Numerically verified."""
     cams = sorted(cam_positions, key=lambda c: (c - p).length_squared)
     for c in cams:
         direction = p - c
@@ -5129,19 +5128,19 @@ def _exp_visible_ray(p, bvh, cam_positions, eps=1e-3):
 
 
 # ----------------------------------------------------------------------
-# Sichtbarkeitsfilter auf der GPU (v105)
+# Visibility filter on the GPU (v105)
 # ----------------------------------------------------------------------
-# Statt je Punkt einen Strahl zu jeder Kamera zu schiessen (Python, bei
-# Klemmbaustein-Modellen ~300 Strahlen je verdecktem Punkt, Vespa 5,4 Mio. Punkte:
-# ~3 h), zeichnet die GPU das Modell aus jeder Kamera einmal als Tiefenbild;
-# alle Punkte werden dann mit numpy gegen jedes Tiefenbild geprueft.
-# Genauigkeit = Aufloesung des Tiefenbilds. Ohne GPU-Kontext (z. B.
-# blender --background) faellt der Export auf den Ray-Cast zurueck.
+# Instead of shooting a ray to every camera per point (Python, with
+# construction-brick models ~300 rays per occluded point, Vespa 5.4 million points:
+# ~3 h), the GPU draws the model once from each camera as a depth image;
+# all points are then tested against each depth image with numpy.
+# Accuracy = resolution of the depth image. Without a GPU context (e.g.
+# blender --background) the export falls back to the ray cast.
 _EXP_GPU_RES = 2048
 
-# Compute-Shader: je Punkt (Texel der Punkt-Textur) in dieses Kamerabild
-# projizieren und gegen den weitesten Tiefenwert der 3x3-Nachbarschaft
-# pruefen -- dieselbe Regel wie _ExpGpuDepth.visible (numpy).
+# Compute shader: per point (texel of the point texture), project into
+# this camera image and test against the farthest depth value of the 3x3
+# neighborhood -- the same rule as _ExpGpuDepth.visible (numpy).
 _EXP_VIS_COMPUTE_SRC = """
 void main()
 {
@@ -5180,7 +5179,7 @@ void main()
 
 
 class _ExpGpuDepth:
-    """Haelt Geometrie-Batch und Framebuffer fuer die Tiefenbilder."""
+    """Holds the geometry batch and framebuffer for the depth images."""
 
     def __init__(self, objs, res=_EXP_GPU_RES):
         import gpu
@@ -5217,8 +5216,8 @@ class _ExpGpuDepth:
         self.batch = batch_for_shader(self.shader, 'TRIS', {"pos": self.verts},
                                       indices=self.tris)
         self.res = res
-        self.nb = 1          # Nachbarschaft (1 = 3x3, 0 = nur das Pixel)
-        self.tol_rel = 2e-3  # Toleranz relativ zur Tiefe
+        self.nb = 1          # neighborhood (1 = 3x3, 0 = only the pixel)
+        self.tol_rel = 2e-3  # tolerance relative to depth
         self.depth_tex = gpu.types.GPUTexture((res, res),
                                               format='DEPTH_COMPONENT32F')
         self.color_tex = gpu.types.GPUTexture((res, res), format='RGBA8')
@@ -5230,20 +5229,20 @@ class _ExpGpuDepth:
         self.center = (lo + hi) / 2.0
         self.radius = float(np.linalg.norm(self.verts - self.center,
                                            axis=1).max()) or 1.0
-        self._cs = None      # Compute-Shader-Zustand (compute_begin)
+        self._cs = None      # compute shader state (compute_begin)
 
     def near_far(self, cam_pos):
-        """Tiefenbereich eng um das Modell (v111). Frueher reichte er vom
-        Zehntausendstel bis zum Hundertfachen der Modellgroesse -- in 32-Bit-
-        Genauigkeit wurde die Rueckrechnung der Tiefe dadurch ungenau."""
+        """Depth range tight around the model (v111). It used to range from
+        a ten-thousandth to a hundred times the model size -- in 32-bit
+        precision this made the depth reconstruction inaccurate."""
         dist = float(np.linalg.norm(np.array(cam_pos) - self.center))
         near = max(self.size * 1e-4, dist - self.radius * 1.01)
         far = dist + self.radius * 1.01
         return near, far
 
     def _render(self, cam_pos, look_dir, fov, near, far):
-        """Zeichnet das Tiefenbild dieser Kamera in self.fb. Rueckgabe: die
-        Kamera-Rotation (Quaternion)."""
+        """Draws the depth image of this camera into self.fb. Returns: the
+        camera rotation (quaternion)."""
         import gpu
         q = look_dir.to_track_quat('-Z', 'Y')
         cam_mw = Matrix.Translation(cam_pos) @ q.to_matrix().to_4x4()
@@ -5265,17 +5264,17 @@ class _ExpGpuDepth:
             gpu.state.depth_test_set('NONE')
         return q
 
-    # --- Punktpruefung als Compute-Shader (v111) ------------------------
-    # Die Punkte liegen als RGBA32F-Textur auf der GPU, das Ergebnis als
-    # R32F-Textur; je Kamera zeichnet die GPU das Tiefenbild und prueft alle
-    # Punkte in einem Durchlauf. Vespa P200 (5,4 Mio. Punkte, 320 Kameras):
-    # unter 1 s statt ~165 s mit numpy; gegen den exakten Ray-Cast verliert
-    # er weniger sichtbare Punkte (80 statt 629 von ~7.000 strittigen).
+    # --- Point test as compute shader (v111) ----------------------------
+    # The points live on the GPU as an RGBA32F texture, the result as an
+    # R32F texture; per camera the GPU draws the depth image and tests all
+    # points in one pass. Vespa P200 (5.4 million points, 320 cameras):
+    # under 1 s instead of ~165 s with numpy; compared with the exact ray
+    # cast it loses fewer visible points (80 instead of 629 of ~7,000 disputed).
     _CS_WIDTH = 4096
 
     def compute_begin(self, points):
-        """Punkte hochladen und Shader bauen. Wirft bei Problemen eine
-        Exception -- der Aufrufer faellt dann auf visible() (numpy) zurueck."""
+        """Upload points and build the shader. Raises an exception on
+        problems -- the caller then falls back to visible() (numpy)."""
         import gpu
         n = len(points)
         w = self._CS_WIDTH
@@ -5304,8 +5303,8 @@ class _ExpGpuDepth:
                         shader=shader)
 
     def compute_camera(self, cam_pos, look_dir, fov):
-        """Tiefenbild dieser Kamera zeichnen und alle noch nicht sichtbaren
-        Punkte dagegen pruefen (auf der GPU, ohne Rueckholen)."""
+        """Draw the depth image of this camera and test all points not yet
+        visible against it (on the GPU, without reading back)."""
         import gpu
         cs = self._cs
         near, far = self.near_far(cam_pos)
@@ -5328,30 +5327,30 @@ class _ExpGpuDepth:
         gpu.compute.dispatch(sh, (cs["w"] + 15) // 16, (cs["h"] + 15) // 16, 1)
 
     def compute_result(self):
-        """bool je Punkt: von mindestens einer Kamera gesehen."""
+        """bool per point: seen by at least one camera."""
         cs = self._cs
         v = np.array(cs["vis"].read(), dtype=np.float32).reshape(-1)
         return v[:cs["n"]] > 0.5
 
     def depth_map(self, cam_pos, look_dir, fov, near, far):
-        """Lineare Tiefe (Abstand entlang der Blickachse) je Pixel, (R,R),
-        Zeile 0 = unten. inf, wo nichts ist."""
+        """Linear depth (distance along the view axis) per pixel, (R,R),
+        row 0 = bottom. inf where there is nothing."""
         q = self._render(cam_pos, look_dir, fov, near, far)
         with self.fb.bind():
             buf = self.fb.read_depth(0, 0, self.res, self.res)
         zb = np.array(buf, dtype=np.float32).reshape(self.res, self.res)
-        # Fensterstiefe -> lineare Augentiefe.
+        # Window depth -> linear eye depth.
         z_ndc = zb.astype(np.float64) * 2.0 - 1.0
         lin = (2.0 * far * near) / (far + near - z_ndc * (far - near))
         lin[zb >= 1.0] = np.inf
         return lin, q
 
     def visible(self, points, cam_pos, look_dir, fov):
-        """bool je Punkt: im Bild dieser Kamera und nicht verdeckt."""
+        """bool per point: in the image of this camera and not occluded."""
         near, far = self.near_far(cam_pos)
         lin, q = self.depth_map(cam_pos, look_dir, fov, near, far)
-        # Weitester Wert der 3x3-Nachbarschaft: Punkte an Kanten und in
-        # schmalen Luecken nicht wegen der Pixelrasterung verlieren.
+        # Farthest value of the 3x3 neighborhood: do not lose points at edges
+        # and in narrow gaps due to pixel rasterization.
         fin = np.where(np.isfinite(lin), lin, np.float64(1e30))
         r = self.res
         mx = fin
@@ -5383,19 +5382,19 @@ class _ExpGpuDepth:
 
 def _exp_sample_face_points(objs, count, scale, W, world_out=None,
                             crop_bounds=None, colors_out=None):
-    """Verteilt 'count' Punkte flaechengewichtet ueber die Oberflaechen der
-    Objekte (gleichmaessige Startdichte unabhaengig vom Vertex-Layout).
-    Rueckgabe: Liste (x,y,z) in Y-up + Scale; world_out bekommt parallel die
-    Weltkoordinaten (fuer den Sichtbarkeitsfilter). Baryzentrisches
-    sqrt-Sampling -> gleichverteilt im Dreieck.
+    """Distributes 'count' points area-weighted over the surfaces of the
+    objects (uniform initial density regardless of the vertex layout).
+    Returns: list (x,y,z) in Y-up + scale; world_out receives the world
+    coordinates in parallel (for the visibility filter). Barycentric
+    sqrt sampling -> uniformly distributed in the triangle.
 
-    Seit v110: Dreiecke per foreach_get/numpy (vorher bmesh + Python-
-    Schleife je Dreieck) und Crop-Box wie bei den Vertex-Punkten -- Punkte
-    ausserhalb werden verworfen und so lange nachgezogen, bis 'count'
-    erreicht ist (hoechstens 6 Runden).
+    Since v110: triangles via foreach_get/numpy (previously bmesh + Python
+    loop per triangle) and crop box as for the vertex points -- points
+    outside are discarded and replenished until 'count'
+    is reached (at most 6 rounds).
 
-    Seit v1.1.5: colors_out bekommt je Punkt die Base Color des Materials
-    der Flaeche (sRGB-Bytes), wie die Vertex-Punkte im Modus Material."""
+    Since v1.1.5: colors_out receives per point the base color of the
+    face's material (sRGB bytes), like the vertex points in Material mode."""
     depsgraph = bpy.context.evaluated_depsgraph_get()
     tri_chunks = []
     col_chunks = []
@@ -5483,21 +5482,21 @@ def _exp_sample_face_points(objs, count, scale, W, world_out=None,
         world_out.extend(map(Vector, world.tolist()))
     if colors_out is not None and C is not None:
         colors_out.extend(map(tuple, _exp_srgb_bytes_np(C[pick_all]).tolist()))
-    # tolist() -> echte Python-floats fuer points3D.txt (v109-Fix).
+    # tolist() -> real Python floats for points3D.txt (v109 fix).
     return out.tolist()
 
 
 def _exp_point_source_objects(scene, s, extra_exclude=()):
-    """Mesh-Objekte, aus denen die Punktwolke entsteht. Explizit genannte
-    Objekte (exp_point_objects) gelten unveraendert. Sonst: alle sichtbaren
-    Meshes, die auch GERENDERT werden -- ohne Hilfsobjekte. Ausgeschlossen
-    sind Objekte mit hide_render (z. B. die Kamera-Sphere), die Sphere und
-    die Leitgitter der Guide-Liste, das Crop-Objekt sowie extra_exclude.
-    Bis v81 landeten so die Vertices der Camera_Sphere als Punkte in der
-    Luft in points3D.txt (v82-Fix)."""
+    """Mesh objects the point cloud is built from. Explicitly named
+    objects (exp_point_objects) apply unchanged. Otherwise: all visible
+    meshes that are also RENDERED -- without helper objects. Excluded
+    are objects with hide_render (e.g. the camera sphere), the sphere and
+    the guide meshes of the guide list, the crop object and extra_exclude.
+    Up to v81 the vertices of the Camera_Sphere thus ended up as points in
+    mid-air in points3D.txt (v82 fix)."""
     names = [x.strip() for x in s.exp_point_objects.split(",") if x.strip()]
     mode = s.exp_point_source
-    # Szenen von vor v129: Namensliste gesetzt, Point Source nie gewaehlt.
+    # Scenes from before v129: name list set, Point Source never chosen.
     if names and not s.is_property_set("exp_point_source"):
         mode = 'OBJECTS'
     if mode == 'OBJECTS' and names:
@@ -5525,11 +5524,11 @@ def _exp_point_source_objects(scene, s, extra_exclude=()):
 
 
 def _exp_vertex_counts(scene, s):
-    """(Vertices je Objekt, Vertices je eindeutigem Mesh, Objekte, Meshes) der
-    Punktwolken-Objekte, ausgewertet inkl. Modifier -- dieselben Zahlen, die
-    der Export nimmt. Liest die bereits ausgewerteten Meshes (kein to_mesh),
-    daher auch im Panel-Draw billig. Die Punktwolke zaehlt jedes Objekt
-    einzeln, Blenders Statistik jedes Mesh nur einmal (verknuepfte Kopien)."""
+    """(vertices per object, vertices per unique mesh, objects, meshes) of the
+    point cloud objects, evaluated incl. modifiers -- the same numbers the
+    export uses. Reads the already evaluated meshes (no to_mesh),
+    hence cheap even in the panel draw. The point cloud counts each object
+    separately, Blender's statistics each mesh only once (linked copies)."""
     objs = _exp_point_source_objects(scene, s)
     depsgraph = bpy.context.evaluated_depsgraph_get()
     per_obj = 0
@@ -5543,14 +5542,14 @@ def _exp_vertex_counts(scene, s):
 
 
 def _exp_max_points_effective(s):
-    """Obergrenze der Vertex-Punkte: mit Use Vertex Count keine (alle)."""
+    """Upper limit of vertex points: none with Use Vertex Count (all)."""
     return None if s.exp_use_vertex_count else s.exp_max_points
 
 
 def _exp_srgb_bytes_np(rgb):
-    """Vektorisierte Fassung von _exp_srgb_byte fuer ein (N,3)-Array
-    linearer Farben (gleiche Schwelle, gleiche Koeffizienten, gleiches
-    Runden). Rueckgabe (N,3) int."""
+    """Vectorized version of _exp_srgb_byte for an (N,3) array
+    of linear colors (same threshold, same coefficients, same
+    rounding). Returns (N,3) int."""
     c = np.clip(np.asarray(rgb, dtype=np.float64), 0.0, 1.0)
     srgb = np.where(c <= 0.0031308, 12.92 * c,
                     1.055 * np.power(c, 1.0 / 2.4) - 0.055)
@@ -5558,8 +5557,8 @@ def _exp_srgb_bytes_np(rgb):
 
 
 def _exp_vertex_first_material(mesh, n):
-    """Materialindex je Vertex: der des ersten Polygons, das den Vertex
-    enthaelt (Polygon-Reihenfolge), sonst 0 -- wie die fruehere Schleife."""
+    """Material index per vertex: that of the first polygon containing the
+    vertex (polygon order), otherwise 0 -- like the earlier loop."""
     vm = np.zeros(n, dtype=np.int64)
     npoly = len(mesh.polygons)
     if not npoly:
@@ -5571,8 +5570,8 @@ def _exp_vertex_first_material(mesh, n):
     nloop = len(mesh.loops)
     lv = np.empty(nloop, dtype=np.int32)
     mesh.loops.foreach_get("vertex_index", lv)
-    # Blender legt die Loops polygonweise hintereinander ab (aufsteigende
-    # loop_start), Loop-Reihenfolge = Polygon-Reihenfolge.
+    # Blender stores the loops polygon by polygon in sequence (ascending
+    # loop_start), loop order = polygon order.
     poly_of_loop = np.repeat(np.arange(npoly), total)
     uniq, first = np.unique(lv, return_index=True)
     vm[uniq] = mi[poly_of_loop[first]]
@@ -5580,9 +5579,9 @@ def _exp_vertex_first_material(mesh, n):
 
 
 def _exp_gather_points(scene, scale, W, s, world_out=None):
-    """Hauptwolke aus den Vertices der Punktwolken-Objekte, mit Crop, Farbe
-    und Obergrenze. Seit v110 mit numpy statt einer Python-Schleife je
-    Vertex (Vespa: 5,4 Mio. Vertices); Ergebnis wie zuvor."""
+    """Main cloud from the vertices of the point cloud objects, with crop,
+    color and upper limit. Since v110 with numpy instead of a Python loop
+    per vertex (Vespa: 5.4 million vertices); same result as before."""
     depsgraph = bpy.context.evaluated_depsgraph_get()
     objs = _exp_point_source_objects(scene, s)
     if not objs:
@@ -5609,7 +5608,7 @@ def _exp_gather_points(scene, scale, W, s, world_out=None):
             mw = np.array(eval_obj.matrix_world, dtype=np.float64)
             world = co.reshape(n, 3) @ mw[:3, :3].T + mw[:3, 3]
 
-            # Farbe je Vertex (linear 0..1); NaN = keine Farbe -> Grau.
+            # Color per vertex (linear 0..1); NaN = no color -> gray.
             rgb = None
             if mode != 'NONE':
                 rgb = np.full((n, 3), np.nan)
@@ -5646,7 +5645,7 @@ def _exp_gather_points(scene, scale, W, s, world_out=None):
     world_all = np.vstack(worlds)
     col_all = np.vstack(colors)
 
-    # Gemeinsam heruntersampeln (Positionen und Farben synchron).
+    # Downsample together (positions and colors in sync).
     cap = _exp_max_points_effective(s)
     if cap is not None and len(world_all) > cap:
         step = len(world_all) / float(cap)
@@ -5658,9 +5657,9 @@ def _exp_gather_points(scene, scale, W, s, world_out=None):
     pts = (world_all @ Wm.T) * scale
     if world_out is not None:
         world_out.extend(map(Vector, world_all.tolist()))
-    # tolist(): echte Python-Zahlen fuer points3D.txt (siehe v109). Zeilen
-    # bleiben Listen -- Tupel daraus zu bauen kostete bei 5 Mio. Punkten
-    # mehrere Sekunden, der Schreibcode entpackt beides gleich.
+    # tolist(): real Python numbers for points3D.txt (see v109). Rows
+    # stay lists -- building tuples from them cost several seconds with
+    # 5 million points; the writing code unpacks both the same way.
     return pts.tolist(), col_all.tolist()
 
 
@@ -5668,9 +5667,9 @@ _EXP_SIGNATURE_VERSION = 2
 
 
 def _exp_face_count(s, n_vertex_points):
-    """Anzahl Face Points, wie der Export sie verwendet (auch fuer die
-    Vorschau im Panel): mit Use Vertex Count ein Anteil der Vertex-Punkte,
-    mindestens 100; sonst der eingegebene Wert."""
+    """Number of face points as the export uses them (also for the
+    preview in the panel): with Use Vertex Count a share of the vertex
+    points, at least 100; otherwise the entered value."""
     if s.exp_use_vertex_count:
         return max(100, int(round(n_vertex_points * s.exp_face_points_percent
                                   / 100.0)))
@@ -5678,15 +5677,15 @@ def _exp_face_count(s, n_vertex_points):
 
 
 def _exp_point_signature(scene, s, cam_views, scale, W):
-    """Fingerabdruck von allem, was die Punktwolke bestimmt. Gleicher
-    Abdruck -> gleiche Punktwolke; dann uebernimmt der Export die zuletzt
-    geschriebene points3D.txt (v106). Pfade gehen NICHT ein.
+    """Fingerprint of everything that determines the point cloud. Same
+    fingerprint -> same point cloud; the export then reuses the most recently
+    written points3D.txt (v106). Paths are NOT included.
 
-    v110: statt nur der Vertex-Anzahl die ausgewerteten Vertex-Positionen
-    (Modifier, Edit Mode), bei Farbmodi die Farbquellen, der Face-Points-
-    Anteil, Blickrichtungen und Brennweite der Kameras sowie der Weg des
-    Sichtbarkeitsfilters (GPU oder Ray-Cast liefern leicht verschiedene
-    Mengen)."""
+    v110: instead of only the vertex count, the evaluated vertex positions
+    (modifiers, Edit Mode), for color modes the color sources, the face
+    points share, view directions and focal length of the cameras, and the
+    method of the visibility filter (GPU or ray cast yield slightly
+    different sets)."""
     import hashlib
     h = hashlib.sha1()
 
@@ -5787,10 +5786,10 @@ def _exp_blend_basename():
 
 
 def _exp_split_name_version(stem):
-    """Zerlegt den .blend-Basisnamen in (Name_ohne_Version, Versions-Token).
-    Beispiel: 'Scene_v001' -> ('Scene', 'v001'); 'Bugatti_Chiron_v002_Addon'
-    -> ('Bugatti_Chiron', 'v002'). Nimmt das LETZTE vN-Token. Ohne Version
-    -> (stem, None). Trennzeichen vor der Version werden abgeschnitten."""
+    """Splits the .blend base name into (name_without_version, version token).
+    Example: 'Scene_v001' -> ('Scene', 'v001'); 'Bugatti_Chiron_v002_Addon'
+    -> ('Bugatti_Chiron', 'v002'). Takes the LAST vN token. Without a version
+    -> (stem, None). Separators before the version are stripped."""
     matches = list(re.finditer(r'[vV]\d+', stem))
     if not matches:
         return stem, None
@@ -5801,22 +5800,22 @@ def _exp_split_name_version(stem):
 
 
 def _exp_resolve_output_dir(s):
-    """Liefert den Zielordner fuer das COLMAP-Modell.
+    """Returns the target folder for the COLMAP model.
 
-    Ist das Feld 'Output Folder' LEER (Default), wird automatisch eine
-    Struktur neben der .blend-Datei gebaut:
+    If the 'Output Folder' field is EMPTY (default), a structure is built
+    automatically next to the .blend file:
         <Name>_COLMAP / <vNNN> /
-    also ein Ordner aus dem Szenennamen (bis vor das Versions-Token) plus
-    '_COLMAP', und darin ein Unterordner mit dem Versions-Token. Beispiel:
-    'Scene_v001.blend' -> 'Scene_COLMAP/v001/'. Fehlt eine Version, wird
-    'v001' verwendet; ist die .blend noch nicht gespeichert, 'Scene_COLMAP'.
+    i.e. a folder named after the scene (up to the version token) plus
+    '_COLMAP', and inside it a subfolder with the version token. Example:
+    'Scene_v001.blend' -> 'Scene_COLMAP/v001/'. Without a version,
+    'v001' is used; if the .blend is not saved yet, 'Scene_COLMAP'.
 
-    Ist das Feld gefuellt, wird der Pfad as-is benutzt (// = relativ zur
-    .blend wird aufgeloest)."""
+    If the field is filled in, the path is used as-is (// = relative to
+    the .blend is resolved)."""
     od = (s.exp_output_dir or "").strip()
     if od:
         return bpy.path.abspath(od)
-    # Leeres Feld -> automatische Struktur neben der .blend.
+    # Empty field -> automatic structure next to the .blend.
     base = bpy.path.abspath("//") if bpy.data.filepath else os.getcwd()
     stem = _exp_blend_basename()
     if stem:
@@ -5829,9 +5828,9 @@ def _exp_resolve_output_dir(s):
 
 
 def _exp_output_has_export(out_dir):
-    """True, wenn im Zielordner bereits ein COLMAP-Export liegt (eine der
-    sparse/0-Dateien). Bilder allein zaehlen nicht: seit v90 rendert die
-    Szene direkt nach images/, das ist noch kein Export."""
+    """True if the target folder already contains a COLMAP export (one of
+    the sparse/0 files). Images alone do not count: since v90 the scene
+    renders directly to images/, which is not an export yet."""
     if not out_dir or not os.path.isdir(out_dir):
         return False
     sparse = os.path.join(out_dir, "sparse", "0")
@@ -5842,7 +5841,7 @@ def _exp_output_has_export(out_dir):
 
 
 def _exp_same_dir(a, b):
-    """True, wenn beide Pfade auf denselben Ordner zeigen."""
+    """True if both paths point to the same folder."""
     if not a or not b:
         return False
     return (os.path.normcase(os.path.normpath(os.path.abspath(a))) ==
@@ -5900,7 +5899,7 @@ class GCAPTURE_OT_export_colmap(Operator):
     def poll(cls, context):
         return context.scene.camera is not None and not cls._is_running
 
-    # ----- Setup (einmalig) -----
+    # ----- Setup (one-time) -----
     def _setup(self, context):
         scene = context.scene
         s = scene.gcapture_settings
@@ -5912,7 +5911,7 @@ class GCAPTURE_OT_export_colmap(Operator):
         self._out_dir = _exp_resolve_output_dir(s)
         self._images_dir = os.path.join(self._out_dir, "images")
         self._sparse_dir = os.path.join(self._out_dir, "sparse", "0")
-        # sparse immer; images nur, wenn Bilder eingebunden werden.
+        # sparse always; images only if images are included.
         os.makedirs(self._sparse_dir, exist_ok=True)
         if s.exp_image_mode != 'NONE':
             os.makedirs(self._images_dir, exist_ok=True)
@@ -5925,36 +5924,36 @@ class GCAPTURE_OT_export_colmap(Operator):
                                % self._src_dir)
         self._pattern = auto_pattern
         self._ext = (auto_ext or "png").lstrip(".")
-        # WICHTIG: Die Posenzahl kommt aus dem SZENEN-FRAMEBEREICH (die
-        # tatsaechlichen Kamera-Keyframes), NICHT aus den vorhandenen
-        # Bilddateien. Sonst exportiert das Addon nur so viele Posen, wie
-        # gerade Bilder im Ordner liegen -- bei noch nicht fertig
-        # synchronisierten Renderfarm-Bildern fehlen dann Posen. Pattern und
-        # Bildgroesse werden weiterhin aus einer Beispieldatei abgeleitet.
+        # IMPORTANT: The pose count comes from the SCENE FRAME RANGE (the
+        # actual camera keyframes), NOT from the existing
+        # image files. Otherwise the add-on exports only as many poses as
+        # there are images in the folder at the moment -- with render farm
+        # images not yet fully synced, poses are then missing. Pattern and
+        # image size are still derived from a sample file.
         self._frames = list(range(scene.frame_start, scene.frame_end + 1))
-        # Fehlende Bilder ermitteln (nur Warnung, kein Weglassen der Pose).
+        # Determine missing images (warning only, the pose is not dropped).
         have = set(auto_frames or [])
         self._missing_images = [fr for fr in self._frames if fr not in have] \
             if have else []
 
-        # Effektiven Bildmodus bestimmen. Verschieben ist destruktiv -- die
-        # Bilder sind danach aus dem Render-Ordner weg. Sicherheitscheck:
-        # MOVE nur, wenn ALLE erwarteten Bilder vorhanden sind. Fehlt eines
-        # (z. B. Renderfarm noch nicht fertig), wird NICHT verschoben, sondern
-        # sicher auf KOPIEREN zurueckgefallen, mit Warnung im Abschluss.
+        # Determine the effective image mode. Moving is destructive -- the
+        # images are gone from the render folder afterwards. Safety check:
+        # MOVE only if ALL expected images are present. If one is missing
+        # (e.g. render farm not finished yet), nothing is moved; instead it
+        # safely falls back to COPY, with a warning in the summary.
         self._image_mode = s.exp_image_mode
         self._move_blocked = False
-        # Rendert die Szene direkt in <out>/images (Save Scene Version),
-        # liegen die Bilder schon im Datensatz: nichts kopieren (v90).
+        # If the scene renders directly into <out>/images (Save Scene Version),
+        # the images are already in the dataset: copy nothing (v90).
         if _exp_same_dir(self._src_dir, self._images_dir):
             self._image_mode = 'INPLACE'
         if self._image_mode == 'MOVE' and self._missing_images:
             self._image_mode = 'COPY'
             self._move_blocked = True
 
-        # Echte Bildgroesse -> Intrinsics + cameras.txt. Aus dem ersten
-        # tatsaechlich VORHANDENEN Bild lesen (auto_frames), nicht aus
-        # self._frames[0] -- dessen Bild koennte noch fehlen.
+        # Actual image size -> intrinsics + cameras.txt. Read from the first
+        # image that is actually PRESENT (auto_frames), not from
+        # self._frames[0] -- its image might still be missing.
         real_size = None
         if self._src_dir:
             probe = (auto_frames[0] if auto_frames
@@ -5971,7 +5970,7 @@ class GCAPTURE_OT_export_colmap(Operator):
 
         self._orig_frame = scene.frame_current
 
-        # Maszstab bestimmen (einmaliger Vorlauf ueber alle Frames).
+        # Determine the scale (one-time pre-pass over all frames).
         if s.exp_auto_scale:
             centers = []
             for fr in self._frames:
@@ -5989,12 +5988,12 @@ class GCAPTURE_OT_export_colmap(Operator):
             self._scale = 1.0
             self._mean_r = None
 
-        # Crop-Box-Bounds (Blender-Weltkoord).
+        # Crop box bounds (Blender world coords).
         self._crop_bounds = _exp_crop_bounds_world(s)
 
-        # Fingerabdruck der Punktwolke (v106): erlaubt das Wiederverwenden
-        # der zuletzt geschriebenen points3D.txt, wenn sich nichts geaendert
-        # hat (z. B. nur ein Pfad).
+        # Point cloud fingerprint (v106): allows reusing the most recently
+        # written points3D.txt if nothing has changed
+        # (e.g. only a path).
         try:
             faces = _gcapture_all_guide_faces(
                 context, None, guide_objs=_collect_guide_objects(
@@ -6007,28 +6006,28 @@ class GCAPTURE_OT_export_colmap(Operator):
             print("[Gaussian Render Capture] point signature failed:", exc)
             self._sig = ""
 
-        # Arbeitslisten.
+        # Work lists.
         self._entries = []
         self._copied = 0
         self._missing = []
 
-        # Arbeitsliste: ein Eintrag ("pose", Bild-ID, Frame) pro Pose.
+        # Work list: one entry ("pose", image ID, frame) per pose.
         self._work = [("pose", i, fr) for i, fr in enumerate(self._frames, start=1)]
         self._total = len(self._work)
         self._done = 0
-        self._phase = 'work'  # 'work' -> Posen, 'filter' -> Sichtbarkeit
+        self._phase = 'work'  # 'work' -> poses, 'filter' -> visibility
         self._start_time = time.time()
         self._s = s
 
     @staticmethod
     def _point_targets(scene, s, guide_objs):
-        # Dieselbe Objektauswahl wie die Hauptwolke. guide_objs nur mit
-        # Guide-Liste ausschliessen: ohne Liste ist es das AKTIVE Objekt --
-        # oft das Modell selbst, das sonst aus Face Points und Filter-BVH fiele.
+        # Same object selection as the main cloud. Exclude guide_objs only with
+        # a guide list: without a list it is the ACTIVE object -- often the
+        # model itself, which would otherwise drop out of face points and filter BVH.
         return _exp_point_source_objects(
             scene, s, guide_objs if s.use_guide_list else ())
 
-    # ----- Pro Arbeitseinheit -----
+    # ----- Per work unit -----
     def _process_pose(self, scene, idx, frame):
         s = self._s
         scene.frame_set(frame)
@@ -6053,7 +6052,7 @@ class GCAPTURE_OT_export_colmap(Operator):
             else:
                 self._missing.append(img_name)
 
-    # ----- Modal-Maschinerie -----
+    # ----- Modal machinery -----
     def invoke(self, context, event):
         try:
             self._setup(context)
@@ -6080,7 +6079,7 @@ class GCAPTURE_OT_export_colmap(Operator):
         if event.type == 'TIMER':
             scene = context.scene
 
-            # Filter-Phase (modal, echtes ESC oben).
+            # Filter phase (modal, real ESC above).
             if self._phase == 'filter':
                 try:
                     return self._filter_tick(context)
@@ -6092,7 +6091,7 @@ class GCAPTURE_OT_export_colmap(Operator):
             if self._done >= self._total:
                 return self._finish(context)
 
-            # Fortschritt im Header.
+            # Progress in the header.
             elapsed = time.time() - self._start_time
             time_info = ""
             if self._done > 0:
@@ -6104,7 +6103,7 @@ class GCAPTURE_OT_export_colmap(Operator):
                 "gcapture.export_colmap", self._done / self._total,
                 "Camera poses %d/%d%s" % (self._done, self._total, time_info))
 
-            # Mehrere Pose-Frames pro Tick abarbeiten (schnell).
+            # Process several pose frames per tick (fast).
             try:
                 batch = 0
                 while self._done < self._total and batch < 25:
@@ -6122,11 +6121,11 @@ class GCAPTURE_OT_export_colmap(Operator):
     def _finish(self, context):
         scene = context.scene
         s = self._s
-        # images.txt schreiben.
+        # Write images.txt.
         _exp_write_images(os.path.join(self._sparse_dir, "images.txt"),
                           self._entries)
 
-        # Unveraenderte Punktwolke uebernehmen (v106).
+        # Reuse the unchanged point cloud (v106).
         target_points = os.path.join(self._sparse_dir, "points3D.txt")
         prev = bpy.path.abspath(s.exp_last_points_file or "")
         reuse = False
@@ -6159,11 +6158,11 @@ class GCAPTURE_OT_export_colmap(Operator):
                 print("[Gaussian Render Capture] could not reuse point cloud:",
                       exc)
 
-        # --- Punkte sammeln (schnell) ---
-        # Sichtbare Vertices als Hauptwolke, Face-Points optional dazu. Wenn
-        # ein Sichtbarkeitsfilter aktiv ist, werden die Punkte NICHT hier
-        # synchron gefiltert (das blockierte ESC), sondern als modale Phase
-        # haeppchenweise im Tick -> echtes ESC. Hier nur sammeln.
+        # --- Collect points (fast) ---
+        # Visible vertices as the main cloud, face points optionally added. If
+        # a visibility filter is active, the points are NOT filtered here
+        # synchronously (that blocked ESC), but as a modal phase
+        # bit by bit in the tick -> real ESC. Only collect here.
         vmode = s.exp_face_points_vischeck
         want_filter = (vmode == 'RAYCAST')
         guide_objs = _collect_guide_objects(bpy.context,
@@ -6171,21 +6170,21 @@ class GCAPTURE_OT_export_colmap(Operator):
         targets = self._point_targets(scene, s, guide_objs)
         need_world = want_filter
 
-        # 1) Hauptwolke.
+        # 1) Main cloud.
         world_v = [] if need_world else None
         pts, cols = _exp_gather_points(scene, self._scale, self._W, s,
                                        world_out=world_v)
         world_main = world_v
-        self._n_vert = len(pts)      # fuer die Abschlussmeldung (v103)
+        self._n_vert = len(pts)      # for the completion message (v103)
         self._n_face = 0
         self._filtered = False
 
-        # 2) Face-Points (optional) dazu. Mit Use Vertex Count: 10 % der
-        # gesammelten Vertex-Punkte (v101), sonst der eingegebene Wert.
+        # 2) Add face points (optional). With Use Vertex Count: 10 % of the
+        # collected vertex points (v101), otherwise the entered value.
         face_count = _exp_face_count(s, len(pts))
         if s.exp_face_points:
             world_f = [] if need_world else None
-            # Farbe wie die Vertex-Punkte: Material der Flaeche (v1.1.5).
+            # Color like the vertex points: material of the face (v1.1.5).
             fcols = [] if (cols is not None and s.exp_point_color != 'NONE') else None
             fpts = _exp_sample_face_points(
                 targets, face_count, self._scale, self._W,
@@ -6203,12 +6202,12 @@ class GCAPTURE_OT_export_colmap(Operator):
                 if need_world and world_main is not None and world_f is not None:
                     world_main = list(world_main) + list(world_f)
 
-        # --- Filter-Phase modal starten oder direkt schreiben ---
+        # --- Start the filter phase modally or write directly ---
         if want_filter and pts and world_main:
             faces = _gcapture_all_guide_faces(bpy.context, None,
                                          guide_objs=guide_objs)
             self._flt_cams = [f[0] for f in faces]
-            # GPU-Tiefenbilder (v105); ohne GPU-Kontext Ray-Cast wie bisher.
+            # GPU depth images (v105); without a GPU context, ray cast as before.
             self._flt_gpu = None
             if not bpy.app.background:
                 try:
@@ -6221,7 +6220,7 @@ class GCAPTURE_OT_export_colmap(Operator):
                                             dtype=np.float64)
                     self._flt_vis = np.zeros(len(world_main), dtype=bool)
                     self._flt_cam_i = 0
-                    # Compute-Shader (v111); sonst numpy je Kamera.
+                    # Compute shader (v111); else numpy per camera.
                     self._flt_compute = False
                     try:
                         self._flt_gpu.compute_begin(self._flt_np)
@@ -6247,13 +6246,13 @@ class GCAPTURE_OT_export_colmap(Operator):
             self._start_time = time.time()
             return {'RUNNING_MODAL'}
 
-        # Kein Filter -> direkt schreiben.
+        # No filter -> write directly.
         return self._write_and_done(context, pts, cols, cancelled=False)
 
     def _filter_tick(self, context):
-        """Eine modale Filter-Etappe: pruefe einen Batch Punkte gegen die
-        Kameras (Ray-Cast). Echtes ESC, weil im modalen Tick. Wenn alle
-        Punkte geprueft sind -> schreiben."""
+        """One modal filter stage: test a batch of points against the
+        cameras (ray cast). Real ESC, since in the modal tick. When all
+        points are tested -> write."""
         if getattr(self, "_flt_gpu", None) is not None:
             return self._filter_tick_gpu(context)
         BATCH = 4000
@@ -6281,8 +6280,8 @@ class GCAPTURE_OT_export_colmap(Operator):
         return {'RUNNING_MODAL'}
 
     def _filter_tick_gpu(self, context):
-        """Filter-Etappe auf der GPU: ein paar Kameras je Tick (Zeitbudget),
-        Punkte, die schon eine Kamera sieht, werden nicht mehr geprueft."""
+        """Filter stage on the GPU: a few cameras per tick (time budget);
+        points already seen by a camera are not tested again."""
         t0 = time.time()
         n_cams = len(self._flt_views)
         if getattr(self, "_flt_compute", False):
@@ -6322,8 +6321,8 @@ class GCAPTURE_OT_export_colmap(Operator):
 
     def _write_and_done(self, context, pts, cols, cancelled=False):
         s = self._s
-        # Keine Gesamt-Obergrenze mehr (v98): Max Points begrenzt nur die
-        # Vertex-Punkte (_exp_gather_points), Face Points kommen obendrauf.
+        # No overall cap anymore (v98): Max Points only limits the
+        # vertex points (_exp_gather_points); Face Points come on top.
 
         if cancelled:
             self.report({'WARNING'},
@@ -6345,7 +6344,7 @@ class GCAPTURE_OT_export_colmap(Operator):
 
         verb = {'MOVE': "moved", 'INPLACE': "already in the dataset"}.get(
             self._image_mode, "copied")
-        # Finale Punktzahl merken und im Panel anzeigen (v103).
+        # Remember final point count, show it in the panel (v103).
         n_v = getattr(self, "_n_vert", len(pts))
         n_f = getattr(self, "_n_face", 0)
         detail = "{:,} vertex".format(n_v)
@@ -6365,16 +6364,16 @@ class GCAPTURE_OT_export_colmap(Operator):
                % (len(self._entries), self._res[0], self._res[1],
                   "image file" if self._real_size is not None else "render settings",
                   self._copied, verb, self._out_dir))
-        # Verschieben war angefordert, aber wegen fehlender Bilder auf
-        # Kopieren zurueckgefallen (Sicherheitscheck) -> klar melden.
+        # Moving was requested but fell back to copying because of
+        # missing images (safety check) -> report clearly.
         if getattr(self, "_move_blocked", False):
             msg += (" | NOTE: Move was requested but some images were "
                     "missing, so images were COPIED instead (render folder "
                     "left intact)")
-        # Warnung: alle Posen wurden geschrieben, aber fuer einige Frames
-        # fehlt (noch) das Bild im Quellordner (z. B. Renderfarm nicht fertig
-        # synchronisiert). Die Posen sind trotzdem im Export -- die Bilder
-        # koennen spaeter ergaenzt werden.
+        # Warning: all poses were written, but for some frames the image is
+        # (still) missing from the source folder (e.g. render farm not finished
+        # syncing). The poses are in the export anyway -- the images
+        # can be added later.
         miss = getattr(self, "_missing_images", []) or self._missing
         if miss:
             ex = miss[0]
@@ -6401,7 +6400,7 @@ class GCAPTURE_OT_export_colmap(Operator):
 
 
 # ----------------------------------------------------------------------
-# Registrierung
+# Registration
 # ----------------------------------------------------------------------
 classes = (
     GCAPTURE_GuideObjRef,
@@ -6456,12 +6455,12 @@ def register():
         _gcapture_msgbus_subscribe()
     except Exception as exc:
         print("[Gaussian Render Capture] msgbus:", exc)
-    # Beim Aktivieren ist bpy.data gesperrt -> kurz danach uebernehmen.
+    # bpy.data is locked on enable -> apply shortly after.
     bpy.app.timers.register(_gcapture_migrate_timer, first_interval=0.1)
 
 
 def unregister():
-    # Live-Lock-Handler sicher entfernen.
+    # Remove the live-lock handler safely.
     _gcapture_lock_remove()
     for lst, fn in ((_gcapture_handlers.load_post, _gcapture_on_load_post),
                     (_gcapture_handlers.save_pre, _gcapture_on_save_pre)):
