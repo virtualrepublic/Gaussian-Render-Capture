@@ -541,7 +541,7 @@ class GCAPTURE_Settings(PropertyGroup):
         description="File format of the rendered images. Both are read by "
                     "Postshot and LichtFeld Studio",
         items=[('PNG', "PNG", "PNG, RGBA 8 bit"),
-               ('TIFF', "TIFF", "TIFF, RGBA 8 bit, Deflate compression - "
+               ('TIFF', "TIFF", "TIFF, RGBA 8 bit, LZW compression - "
                 "smaller files, same images")],
         default='PNG',
         # Applied at once, so Blender's Output settings show the choice (1.2.0);
@@ -3277,7 +3277,7 @@ def _gcapture_apply_image_format(scene, fmt):
     im.color_mode = 'RGBA'
     im.color_depth = '8'
     if fmt == 'TIFF':
-        im.tiff_codec = 'DEFLATE'
+        im.tiff_codec = 'LZW'
 
 
 def _gcapture_format_ext(scene):
