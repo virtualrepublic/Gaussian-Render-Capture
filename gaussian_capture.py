@@ -4125,6 +4125,16 @@ def _gcapture_wt_status_export(context, s):
     return 'TODO', "Not exported yet (%s)" % os.path.basename(out_dir)
 
 
+def _cln_result_text(removed, total, out_name, mode, warn=False):
+    """Result line of Clean Splat: numbers - file (path). The panel shows it
+    in two lines, split at the first " - "."""
+    text = "Removed {:,} of {:,} splats ({:.1f} %) - {}".format(
+        removed, total, 100.0 * removed / max(total, 1), out_name)
+    if warn:
+        text += " - more than half: splat from another scene version?"
+    return "%s (%s)" % (text, mode)
+
+
 def _cln_check(context, s):
     """What step 8 is missing (red lines) and the paths."""
     errs = []
@@ -4165,15 +4175,22 @@ def _gcapture_draw_clean(layout, context):
     col.enabled = not errs
     col.operator("gcapture.clean_splat", icon='OUTLINER_OB_POINTCLOUD',
                  depress=not errs and not s.clean_last_result)
-    if s.clean_last_result:
-        layout.label(text=s.clean_last_result,
-                     icon='ERROR' if "another scene version" in s.clean_last_result
-                     else 'CHECKMARK')
+    # In the guide the status line shows the result; the panel shows it here,
+    # in two lines so the numbers are not cut off.
+    if s.clean_last_result and not s.wt_active:
+        head, _, tail = s.clean_last_result.partition(" - ")
+        icon = ('ERROR' if "another scene version" in s.clean_last_result
+                else 'CHECKMARK')
+        layout.label(text=head, icon=icon)
+        if tail:
+            layout.label(text=tail, icon='BLANK1')
 
 
 def _gcapture_wt_status_clean(context, s):
     if s.clean_last_result:
-        return 'DONE', s.clean_last_result
+        # numbers only: the file is named in the field above, and a longer
+        # line would be cut off in the guide
+        return 'DONE', s.clean_last_result.partition(" - ")[0]
     return 'OPTIONAL', "Optional, after training: pick the splat and clean it"
 
 
@@ -4272,6 +4289,8 @@ _GCAPTURE_WT_STEPS = [
          steps=["Check the Resolution and confirm it with OK - or change "
                 "it.",
                 "Check the render output in the box below.",
+                "Choose PNG or TIFF (both RGBA 8 bit, read by Postshot and "
+                "LichtFeld).",
                 "Press Render EEVEE (much faster, lighting approximated) or "
                 "Render Cycles (exact path tracing, slower): the scene is "
                 "saved, then rendering starts; Esc cancels."],
@@ -6083,15 +6102,11 @@ class GCAPTURE_OT_clean_splat(Operator):
                         "programs" % (os.path.basename(out), exc.strerror or exc))
             return {'CANCELLED'}
         self._release()
-        msg = "Removed %d of %d splats (%.1f %%) - %s" % (
-            k, n, 100.0 * k / max(n, 1), os.path.basename(out))
-        if k > n / 2:
-            msg += " - more than half: splat from another scene version?"
-            self.report({'WARNING'}, msg)
-        else:
-            self.report({'INFO'}, msg)
-        s.clean_last_result = "%s (%s)" % (msg, mode)
-        print("[Gaussian Render Capture] Clean Splat (%s): %s" % (mode, msg))
+        warn = k > n / 2
+        msg = _cln_result_text(k, n, os.path.basename(out), mode, warn)
+        self.report({'WARNING'} if warn else {'INFO'}, msg)
+        s.clean_last_result = msg
+        print("[Gaussian Render Capture] Clean Splat: %s" % msg)
         return {'FINISHED'}
 
     def _fail(self, context, exc):
