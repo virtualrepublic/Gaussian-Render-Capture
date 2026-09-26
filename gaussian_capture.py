@@ -5460,6 +5460,69 @@ def _gcapture_ply_write(path, ply, keep, comment):
             os.remove(tmp)
 
 
+def _cln_export_json_path(ds_dir):
+    """<vNNN>_gcapture_export.json sits NEXT TO the dataset folder (v145)."""
+    ds = os.path.normpath(ds_dir)
+    return os.path.join(os.path.dirname(ds),
+                        os.path.basename(ds) + "_gcapture_export.json")
+
+
+def _cln_load_transform(json_path):
+    """(blender_from_dataset as a 4x4 Matrix, scale) from the export JSON."""
+    import json
+    with open(json_path, encoding="utf-8") as f:
+        info = json.load(f)
+    mat, scale = info.get("blender_from_dataset"), info.get("scale")
+    if not mat or not scale:
+        raise ValueError("%s has no blender_from_dataset / scale"
+                         % os.path.basename(json_path))
+    return Matrix(mat), float(scale)
+
+
+def _cln_dataset_views(ds_dir, bfd):
+    """Cameras of the dataset in Blender world space: [(pos, fwd, fov)]. Exactly
+    the poses the trainer used (including Live Camera Adjust, without
+    rejected interior cameras). fov covers the whole image (larger axis,
+    shift included) -- the depth map is square."""
+    from mathutils import Quaternion
+    sp = os.path.join(ds_dir, "sparse", "0")
+    fovs = {}
+    with open(os.path.join(sp, "cameras.txt"), encoding="utf-8") as f:
+        for line in f:
+            p = line.split()
+            if len(p) < 8 or p[0].startswith("#"):
+                continue
+            w, h = float(p[2]), float(p[3])
+            fx, fy, cx, cy = map(float, p[4:8])
+            half = max(max(cx, w - cx) / fx, max(cy, h - cy) / fy)
+            fovs[p[0]] = 2.0 * math.atan(half)
+    rot = bfd.to_3x3()
+    views = []
+    with open(os.path.join(sp, "images.txt"), encoding="utf-8") as f:
+        for line in f:
+            p = line.split()
+            # Image line: ID QW QX QY QZ TX TY TZ CAMERA_ID NAME (the lines of the
+            # 2D points have a multiple of 3 fields or are empty).
+            if len(p) != 10 or p[0].startswith("#"):
+                continue
+            try:
+                int(p[0])
+                q = Quaternion(tuple(float(v) for v in p[1:5]))
+                t = Vector(tuple(float(v) for v in p[5:8]))
+            except ValueError:
+                continue
+            fov = fovs.get(p[8])
+            if fov is None:
+                continue
+            r_w2c = q.to_matrix()
+            c_ds = -(r_w2c.transposed() @ t)
+            fwd_ds = r_w2c.transposed() @ Vector((0.0, 0.0, 1.0))
+            pos = (bfd @ c_ds.to_4d()).to_3d()
+            fwd = (rot @ fwd_ds).normalized()
+            views.append((pos, fwd, fov))
+    return views
+
+
 def _exp_sample_face_points(objs, count, scale, W, world_out=None,
                             crop_bounds=None, colors_out=None):
     """Distributes 'count' points area-weighted over the surfaces of the
