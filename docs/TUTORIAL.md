@@ -342,6 +342,8 @@ existing splats are still refined, and fine details usually settle in the second
 
 ## Step 8: Clean Splat (after training)
 
+<img src="images/B15_clean_splat.png" alt="Guide: Clean Splat">
+
 **What it is for:** removes the splats in empty space – floaters around the model, in its cavities
 and behind the cameras – from the splat you trained in LichtFeld Studio or Postshot.
 
