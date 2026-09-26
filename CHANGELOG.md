@@ -13,7 +13,8 @@ documentation changes are not.
   (default 2) and splats no camera sees are removed; the original file stays untouched.
   Datasets exported with Gaussian Render Scan 1.0.x (`gscan_export.json`) work as well.
 - Step 6 has an image format choice: **PNG** or **TIFF**, both RGBA 8 bit (TIFF with Deflate
-  compression). It is applied on every render, also by *Command Line Render*. The export takes the
+  compression). It shows in Blender's Output settings as soon as it is chosen and is applied on
+  every render, also by *Command Line Render*. The export takes the
   chosen format when images of an earlier render in another format are still in the folder.
 
 ## [1.1.5] – 2026-09-24

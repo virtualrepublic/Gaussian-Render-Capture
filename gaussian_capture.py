@@ -544,6 +544,10 @@ class GCAPTURE_Settings(PropertyGroup):
                ('TIFF', "TIFF", "TIFF, RGBA 8 bit, Deflate compression - "
                 "smaller files, same images")],
         default='PNG',
+        # Applied at once, so Blender's Output settings show the choice (1.2.0);
+        # the render buttons apply it again in case it was changed there.
+        update=lambda self, context: _gcapture_apply_image_format(
+            context.scene, self.render_format),
     )
     clean_splat_file: StringProperty(
         name="Splat File",
