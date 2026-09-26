@@ -5523,6 +5523,84 @@ def _cln_dataset_views(ds_dir, bfd):
     return views
 
 
+_CLN_GEOM_TYPES = {'MESH', 'CURVE', 'SURFACE', 'FONT', 'META'}
+
+
+def _cln_render_geometry(context):
+    """Everything that is rendered, as triangles in world coordinates -- not
+    only the look target: a rendered floor is not empty space. Includes
+    instances (collection instances, Geometry Nodes) and objects that are
+    only hidden in the viewport. Without the camera sphere, guides, crop
+    object, Capture_Rig and hide_render objects."""
+    scene = context.scene
+    s = scene.gcapture_settings
+    excl = set()
+    if s.sph_object is not None:
+        excl.add(s.sph_object.name)
+    for item in s.guides:
+        for ref in item.objects:
+            if ref.obj is not None:
+                excl.add(ref.obj.name)
+    if s.exp_crop_object is not None:
+        excl.add(s.exp_crop_object.name)
+    rig = bpy.data.collections.get(_GCAPTURE_RIG_COLL)
+    if rig is not None:
+        excl.update(o.name for o in rig.all_objects)
+    dg = context.evaluated_depsgraph_get()
+    cache, verts, tris = {}, [], []
+    off = 0
+
+    def add(ob_eval, key, mw):
+        nonlocal off
+        if key not in cache:
+            co = tri = None
+            me = ob_eval.to_mesh()
+            if me is not None:
+                try:
+                    me.calc_loop_triangles()
+                    if len(me.vertices) and len(me.loop_triangles):
+                        co = np.empty(len(me.vertices) * 3, dtype=np.float32)
+                        me.vertices.foreach_get("co", co)
+                        co = co.reshape(-1, 3)
+                        tri = np.empty(len(me.loop_triangles) * 3, dtype=np.int32)
+                        me.loop_triangles.foreach_get("vertices", tri)
+                        tri = tri.reshape(-1, 3)
+                finally:
+                    ob_eval.to_mesh_clear()
+            cache[key] = (co, tri)
+        co, tri = cache[key]
+        if co is None:
+            return
+        mwn = np.array(mw, dtype=np.float32)
+        verts.append(co @ mwn[:3, :3].T + mwn[:3, 3])
+        tris.append(tri + off)
+        off += len(co)
+
+    seen = set()
+    for inst in dg.object_instances:
+        ob = inst.object
+        orig = ob.original
+        if ob.type not in _CLN_GEOM_TYPES or orig.hide_render or orig.name in excl:
+            continue
+        if not inst.is_instance:
+            seen.add(orig.name)
+        key = orig.name + "|" + (ob.data.name if ob.data is not None else "")
+        add(ob, key, inst.matrix_world)
+    # Objects hidden only in the viewport are missing from the depsgraph --
+    # but they are rendered. Added as single objects, without instances.
+    for orig in scene.objects:
+        if (orig.name in seen or orig.name in excl or orig.hide_render
+                or orig.type not in _CLN_GEOM_TYPES):
+            continue
+        if orig.visible_get():
+            continue
+        add(orig.evaluated_get(dg), orig.name + "|hidden", orig.matrix_world)
+    if not verts:
+        raise ValueError("No rendered geometry in the scene")
+    return (np.vstack(verts).astype(np.float32),
+            np.vstack(tris).astype(np.int32))
+
+
 def _exp_sample_face_points(objs, count, scale, W, world_out=None,
                             crop_bounds=None, colors_out=None):
     """Distributes 'count' points area-weighted over the surfaces of the
