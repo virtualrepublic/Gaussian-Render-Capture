@@ -28,7 +28,7 @@ Contents: [0 Install](#0-install-the-add-on) · [Start the guide](#start-the-gui
 [3 Group & Align](#step-3-group--align-to-ground) · [4 Camera Sphere](#step-4-camera-sphere) ·
 [5 Build](#step-5-build-the-camera-animation) · [6 Render](#step-6-render) ·
 [7 Export](#step-7-colmap-export) · [Train](#then-train-the-splat) ·
-[The dataset](#what-the-dataset-contains)
+[8 Clean Splat](#step-8-clean-splat-after-training) · [The dataset](#what-the-dataset-contains)
 
 ---
 
