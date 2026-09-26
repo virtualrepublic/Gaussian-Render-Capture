@@ -548,8 +548,11 @@ class GCAPTURE_Settings(PropertyGroup):
     clean_splat_file: StringProperty(
         name="Splat File",
         description="The trained splat (.ply from LichtFeld Studio or Postshot) "
-                    "of this scene version",
-        default="", subtype='FILE_PATH',
+                    "of this scene version. The folder button next to it opens "
+                    "the dataset folder",
+        # No FILE_PATH subtype: it adds Blender's own file button next to the
+        # add-on's, which opens in the dataset folder (1.2.0).
+        default="",
         update=lambda self, context: setattr(self, "clean_last_result", ""),
     )
     clean_min_views: IntProperty(
