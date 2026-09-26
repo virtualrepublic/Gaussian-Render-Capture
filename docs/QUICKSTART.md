@@ -7,7 +7,7 @@ The shortest way from a model to a Gaussian Splat. Each line is one click or one
 |---|---|---|
 | 1 | [Download](https://github.com/virtualrepublic/Gaussian-Render-Capture/releases/latest/download/gaussian_capture.py) and install `gaussian_capture.py` (*Preferences → Add-ons → Install from Disk*), enable it | Sidebar tab **Gaussian Render Capture** (press N) |
 | 2 | Import your model | – |
-| 3 | **Start Guide** | Guide card, step 1 of 7 |
+| 3 | **Start Guide** | Guide card, step 1 of 8 |
 | 4 | **Prepare Scene** | *Scene prepared (Cycles on GPU)* |
 | 5 | Select the model, **Put Selection into Collection** – or add its collection with **+** | *Target: …* |
 | 6 | Object on a ground: **Group & Align to Ground** – floating object: **Next** | *Grouped under 'GCapture_Group'* |
@@ -16,6 +16,7 @@ The shortest way from a model to a Gaussian Splat. Each line is one click or one
 | 9 | Resolution **OK**, then **Render EEVEE** (fast) or **Render Cycles** (exact) | *All 320 images found* |
 | 10 | **Export COLMAP (Postshot / LichtFeld)** | *Dataset written* |
 | 11 | Open `<Name>_COLMAP/v001` in Postshot or LichtFeld Studio and train | the splat |
+| 12 | Optional: export the splat as `.ply`, pick it in step 8, **Clean Splat** | *Removed … splats – <name>_clean.ply* |
 
 Blue buttons show the next action, red status lines show what is still missing, and **Next**
 turns blue when a step is done.

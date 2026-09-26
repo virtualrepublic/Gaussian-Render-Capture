@@ -45,3 +45,9 @@ consistently – Cycles guarantees that, EEVEE comes close with the capture pres
 (`blender -b <scene> -a`). The add-on writes such a script next to the scene; double-click it.
 
 **Z-up / Y-up** – Blender uses Z as "up", many splatting tools use Y. The export converts it.
+
+**Floater** – a splat in empty space, e.g. inside a car body seen through the windows or in the air
+around the model. Step 8 removes them.
+
+**Free-space carving** – removing splats by the depth of the model: along each camera ray the space
+up to the first surface is empty, so a splat there cannot belong to the model.

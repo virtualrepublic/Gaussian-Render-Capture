@@ -45,6 +45,8 @@ Example model: LDraw model of set 10252 by Roland Dahl (RolandD), CC BY 2.0 – 
   GPU visibility filter drops hidden inner parts.
 - **Auto scale** with the factor recorded in `<vNNN>_gcapture_export.json` next to the dataset, so a
   trained splat can be placed back onto the model.
+- **Clean Splat** – after training, removes floaters from the trained splat with the model's depth
+  per camera: no rendering, a few seconds, the original file stays.
 
 ## Install
 

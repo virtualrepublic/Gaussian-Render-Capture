@@ -67,3 +67,14 @@ denoiser; otherwise use Blender 4.2 or later.
 **Training in LichtFeld has reached the maximum number of splats – is more training useful?** Yes.
 From then on no new splats are added, but the existing ones are still refined; fine details
 usually settle in the second half of the run.
+
+**Clean Splat: "No <vNNN>_gcapture_export.json".** The dataset of this scene version has not been
+exported yet, or you opened another version. Export it in step 7, or open the version the splat
+was trained from.
+
+**Clean Splat removed more than half of the splats.** The splat belongs to another scene version,
+or the model was moved or scaled after the export. Open the version the dataset was exported from;
+the original file is untouched, delete the `_clean.ply`.
+
+**Clean Splat: "Could not write … _clean.ply".** The file is open in a viewer (SuperSplat,
+LichtFeld, Postshot). Close it there and press Clean Splat again.

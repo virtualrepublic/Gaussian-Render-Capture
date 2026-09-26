@@ -98,7 +98,18 @@ Active Camera, Set Scene Frame Range, Set Render Resolution. They apply at once 
 |---|---|
 | **Export COLMAP (Postshot / LichtFeld)** | Writes `sparse/0/` and, if chosen, the images into the dataset, and `<vNNN>_gcapture_export.json` next to it. While it runs, a progress bar replaces the button; Esc cancels. |
 
+## 8. Clean Splat (after training)
+
+| Setting | Default | What it does |
+|---|---|---|
+| Splat File | – | The trained splat (`.ply` from LichtFeld Studio or Postshot) of this scene version. The folder button opens the dataset folder. |
+| **Clean Splat** | – | Removes every splat that lies in front of the model's surface in at least *Min. Views* cameras of the dataset, and every splat no camera sees. Writes `<name>_clean.ply` next to the file; the original stays untouched. Uses the cameras and the scale of the exported dataset (`<vNNN>_gcapture_export.json`) and every rendered object as the surface. While it runs, a progress bar replaces the button; Esc cancels and writes nothing. |
+
 ## Advanced
 
 Custom camera guides (your own meshes instead of the sphere), interior camera rejection for room
 rigs, Render Setup (see step 6), maintainer and licence.
+
+| Setting | Default | What it does |
+|---|---|---|
+| Min. Views (Clean Splat) | 2 | A splat is removed when it lies in front of the surface in at least this many cameras. 1 removes more, higher values less. |

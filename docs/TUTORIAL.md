@@ -340,6 +340,25 @@ existing splats are still refined, and fine details usually settle in the second
 
 ---
 
+## Step 8: Clean Splat (after training)
+
+**What it is for:** removes the splats in empty space – floaters around the model, in its cavities
+and behind the cameras – from the splat you trained in LichtFeld Studio or Postshot.
+
+1. Export the trained splat as `.ply` from your trainer.
+2. Open the scene version the dataset was exported from (e.g. `Beetle_v001.blend`).
+3. Click the folder button next to *Splat File* and pick the `.ply` – the file browser opens in the
+   dataset folder.
+4. Press **Clean Splat**. Every camera of the dataset sees the model's depth; a splat in front of
+   the surface in at least two cameras, or seen by no camera, goes. The result line says how many
+   splats were removed; `<name>_clean.ply` is written next to your file, the original stays.
+
+Nothing is rendered: the GPU draws the depth of the model per camera, which takes a few seconds.
+Splats directly on the surface stay, as do the splats of a rendered floor or backdrop. *Min. Views*
+under **Advanced** sets how many cameras must see a splat in front of the surface (default 2).
+
+---
+
 ## What the dataset contains
 
 <img src="images/B16_dataset_tree.png" alt="Dataset folder structure">
