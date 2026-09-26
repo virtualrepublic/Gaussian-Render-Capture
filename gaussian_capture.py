@@ -5177,15 +5177,58 @@ void main()
 }
 """
 
+# Clean Splat (1.2.0): mirror image of the visibility test. Per splat count
+# in how many cameras it lies in the image (seen) and in how many it lies in
+# front of the NEAREST depth of the 3x3 neighbourhood (viol). p.w = sigma,
+# < 0 = empty slot. The same rule as _cln_judge (numpy).
+_CLN_CARVE_COMPUTE_SRC = """
+void main()
+{
+  ivec2 id = ivec2(gl_GlobalInvocationID.xy);
+  ivec2 sz = imageSize(pts);
+  if (id.x >= sz.x || id.y >= sz.y) { return; }
+  vec4 p = imageLoad(pts, id);
+  if (p.w < 0.0) { return; }
+  vec3 rel = p.xyz - cam_pos.xyz;
+  float d = dot(rel, cam_fwd.xyz);
+  float f = params.x;
+  float nr = params.y;
+  float fr = params.z;
+  int res = int(params.w);
+  if (d <= nr) { return; }
+  float xn = dot(rel, cam_right.xyz) / d * f;
+  float yn = dot(rel, cam_up.xyz) / d * f;
+  if (abs(xn) > 1.0 || abs(yn) > 1.0) { return; }
+  imageStore(seen, id, imageLoad(seen, id) + vec4(1.0));
+  int px = clamp(int((xn + 1.0) * 0.5 * float(res)), 0, res - 1);
+  int py = clamp(int((yn + 1.0) * 0.5 * float(res)), 0, res - 1);
+  float mn = 1e30;
+  for (int dy = -1; dy <= 1; dy++) {
+    for (int dx = -1; dx <= 1; dx++) {
+      ivec2 q = clamp(ivec2(px + dx, py + dy), ivec2(0), ivec2(res - 1));
+      float z = texelFetch(depth_tx, q, 0).r;
+      float lin = (z >= 1.0) ? 1e30 :
+                  (2.0 * fr * nr) / (fr + nr - (2.0 * z - 1.0) * (fr - nr));
+      mn = min(mn, lin);
+    }
+  }
+  if (d + 3.0 * p.w + tol_v.x * d + tol_v.y < mn) {
+    imageStore(viol, id, imageLoad(viol, id) + vec4(1.0));
+  }
+}
+"""
+
 
 class _ExpGpuDepth:
     """Holds the geometry batch and framebuffer for the depth images."""
 
-    def __init__(self, objs, res=_EXP_GPU_RES):
+    def __init__(self, objs, res=_EXP_GPU_RES, geometry=None):
         import gpu
         from gpu_extras.batch import batch_for_shader
         depsgraph = bpy.context.evaluated_depsgraph_get()
         verts, tris, off = [], [], 0
+        if geometry is not None:            # Clean Splat: ready triangles (1.2.0)
+            verts, tris, objs = [geometry[0]], [geometry[1]], ()
         for o in objs:
             if o.type != 'MESH':
                 continue
@@ -5331,6 +5374,71 @@ class _ExpGpuDepth:
         cs = self._cs
         v = np.array(cs["vis"].read(), dtype=np.float32).reshape(-1)
         return v[:cs["n"]] > 0.5
+
+    # --- Clean Splat (1.2.0) -------------------------------------------
+    def carve_begin(self, points, sigma):
+        """Upload the splats (xyz + sigma) and build the counting shader."""
+        import gpu
+        n = len(points)
+        w = self._CS_WIDTH
+        h = max(1, (n + w - 1) // w)
+        if h > 16384:
+            raise RuntimeError("too many splats for one texture (%d)" % n)
+        buf = np.full((h * w, 4), -1.0, dtype=np.float32)
+        buf[:n, :3] = points
+        buf[:n, 3] = sigma
+        pts_tex = gpu.types.GPUTexture(
+            (w, h), format='RGBA32F',
+            data=gpu.types.Buffer('FLOAT', h * w * 4, buf.ravel()))
+        viol = gpu.types.GPUTexture((w, h), format='R32F')
+        seen = gpu.types.GPUTexture((w, h), format='R32F')
+        viol.clear(format='FLOAT', value=(0.0,))
+        seen.clear(format='FLOAT', value=(0.0,))
+        info = gpu.types.GPUShaderCreateInfo()
+        info.image(0, 'RGBA32F', 'FLOAT_2D', 'pts', qualifiers={'READ'})
+        info.image(1, 'R32F', 'FLOAT_2D', 'viol', qualifiers={'READ', 'WRITE'})
+        info.image(2, 'R32F', 'FLOAT_2D', 'seen', qualifiers={'READ', 'WRITE'})
+        info.sampler(0, 'FLOAT_2D', 'depth_tx')
+        for name in ('cam_pos', 'cam_fwd', 'cam_right', 'cam_up', 'params',
+                     'tol_v'):
+            info.push_constant('VEC4', name)
+        info.local_group_size(16, 16, 1)
+        info.compute_source(_CLN_CARVE_COMPUTE_SRC)
+        shader = gpu.shader.create_from_info(info)
+        self._carve = dict(n=n, w=w, h=h, pts=pts_tex, viol=viol, seen=seen,
+                           shader=shader)
+
+    def carve_camera(self, cam_pos, look_dir, fov, tol_abs):
+        """Draw this camera's depth and count all splats (on the GPU)."""
+        import gpu
+        cs = self._carve
+        near, far = self.near_far(cam_pos)
+        q = self._render(cam_pos, look_dir, fov, near, far)
+        r = q @ Vector((1.0, 0.0, 0.0))
+        u = q @ Vector((0.0, 1.0, 0.0))
+        fw = look_dir.normalized()
+        sh = cs["shader"]
+        sh.bind()
+        sh.image('pts', cs["pts"])
+        sh.image('viol', cs["viol"])
+        sh.image('seen', cs["seen"])
+        sh.uniform_sampler('depth_tx', self.depth_tex)
+        sh.uniform_float('cam_pos', (cam_pos.x, cam_pos.y, cam_pos.z, 0.0))
+        sh.uniform_float('cam_fwd', (fw.x, fw.y, fw.z, 0.0))
+        sh.uniform_float('cam_right', (r.x, r.y, r.z, 0.0))
+        sh.uniform_float('cam_up', (u.x, u.y, u.z, 0.0))
+        sh.uniform_float('params', (1.0 / math.tan(fov / 2.0), near, far,
+                                    float(self.res)))
+        sh.uniform_float('tol_v', (_CLN_TOL_REL, tol_abs, 0.0, 0.0))
+        gpu.compute.dispatch(sh, (cs["w"] + 15) // 16, (cs["h"] + 15) // 16, 1)
+
+    def carve_result(self):
+        """(viol, seen) per splat as int32."""
+        cs = self._carve
+        viol = np.array(cs["viol"].read(), dtype=np.float32).reshape(-1)
+        seen = np.array(cs["seen"].read(), dtype=np.float32).reshape(-1)
+        return (np.rint(viol[:cs["n"]]).astype(np.int32),
+                np.rint(seen[:cs["n"]]).astype(np.int32))
 
     def depth_map(self, cam_pos, look_dir, fov, near, far):
         """Linear depth (distance along the view axis) per pixel, (R,R),
