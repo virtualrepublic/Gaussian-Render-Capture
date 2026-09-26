@@ -44,7 +44,7 @@ Code comments are in English.
 bl_info = {
     "name": "Gaussian Render Capture",
     "author": "Prof. Michael Klein - Mediadesign University of Applied Sciences",
-    "version": (1, 1, 5),
+    "version": (1, 2, 0),
     "blender": (4, 1, 0),
     "location": "View3D > Sidebar (N) > Gaussian Render Capture",
     "description": "Synthetic COLMAP datasets for Gaussian Splatting: camera "

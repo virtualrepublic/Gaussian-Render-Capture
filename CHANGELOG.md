@@ -5,7 +5,7 @@ All notable changes to this project are documented here. The project follows
 changes that break existing scenes or settings. Only changes to the add-on itself are listed;
 documentation changes are not.
 
-## [Unreleased]
+## [1.2.0] – 2026-09-26
 
 - Step 8 **Clean Splat**: removes the splats in empty space from a trained splat (`.ply` from
   LichtFeld Studio or Postshot) using the model's depth per dataset camera, and writes
@@ -14,8 +14,8 @@ documentation changes are not.
   Datasets exported with Gaussian Render Scan 1.0.x (`gscan_export.json`) work as well.
 - Step 6 has an image format choice: **PNG** or **TIFF**, both RGBA 8 bit (TIFF with LZW
   compression). It shows in Blender's Output settings as soon as it is chosen and is applied on
-  every render, also by *Command Line Render*. The export takes the
-  chosen format when images of an earlier render in another format are still in the folder.
+  every render, also by *Command Line Render*. The export takes the chosen format when images of
+  an earlier render in another format are still in the folder.
 
 ## [1.1.5] – 2026-09-24
 
