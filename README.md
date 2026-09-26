@@ -39,7 +39,7 @@ Example model: LDraw model of set 10252 by Roland Dahl (RolandD), CC BY 2.0 – 
 - **Scene versions** – `<Name>_v001.blend` renders and exports into its own dataset folder
   `<Name>_COLMAP/v001/`; versions never mix.
 - **Live Camera Adjust** – fine-tune one view or the whole sphere through the camera.
-- **Render from the panel** – *Render EEVEE* (fast) or *Render Cycles* (exact); or *Command Line
+- **Render from the panel** – PNG or TIFF; *Render EEVEE* (fast) or *Render Cycles* (exact); or *Command Line
   Render*: a double-click script renders headless while Blender stays free.
 - **Start point cloud** from all model vertices plus surface points, in the material colours; a
   GPU visibility filter drops hidden inner parts.

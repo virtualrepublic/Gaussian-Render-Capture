@@ -5,6 +5,12 @@ All notable changes to this project are documented here. The project follows
 changes that break existing scenes or settings. Only changes to the add-on itself are listed;
 documentation changes are not.
 
+## [Unreleased]
+
+- Step 6 has an image format choice: **PNG** or **TIFF**, both RGBA 8 bit (TIFF with Deflate
+  compression). It is applied on every render, also by *Command Line Render*. The export takes the
+  chosen format when images of an earlier render in another format are still in the folder.
+
 ## [1.1.5] – 2026-09-24
 
 - *Build Camera Animation* sizes the camera in the viewport to the sphere (10 % of its radius)

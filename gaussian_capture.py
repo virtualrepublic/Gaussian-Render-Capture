@@ -536,6 +536,15 @@ class GCAPTURE_Settings(PropertyGroup):
                     "is closed",
         default=False,
     )
+    render_format: EnumProperty(
+        name="Image Format",
+        description="File format of the rendered images. Both are read by "
+                    "Postshot and LichtFeld Studio",
+        items=[('PNG', "PNG", "PNG, RGBA 8 bit"),
+               ('TIFF', "TIFF", "TIFF, RGBA 8 bit, Deflate compression - "
+                "smaller files, same images")],
+        default='PNG',
+    )
     render_script: StringProperty(
         name="Render Script",
         description="Last headless render script written",
@@ -3171,6 +3180,7 @@ class GCAPTURE_OT_render_images(Operator):
             scene.render.engine = 'CYCLES'
             scene.cycles.device = 'GPU' if dtype else 'CPU'
         _gcapture_apply_render_setup(scene, s)
+        _gcapture_apply_image_format(scene, s.render_format)
         out = os.path.dirname(bpy.path.abspath(scene.render.filepath))
         if out:
             os.makedirs(out, exist_ok=True)
@@ -3225,6 +3235,28 @@ class GCAPTURE_OT_render_images(Operator):
             return {'FINISHED'}
         bpy.ops.render.render(animation=True)
         return {'FINISHED'}
+
+
+def _gcapture_apply_image_format(scene, fmt):
+    """Bildformat der Render-Knoepfe (1.2.0): PNG oder TIFF, jeweils RGBA
+    8 bit. 16 bit bringt beim Training nichts (Test 26.09.2026); EXR bleibt
+    weg -- LichtFeld liest weder DWAA/DWAB noch Multilayer."""
+    im = scene.render.image_settings
+    if hasattr(im, "media_type"):          # Blender 5.x: vor dem Format setzen
+        im.media_type = 'IMAGE'
+    im.file_format = fmt
+    im.color_mode = 'RGBA'
+    im.color_depth = '8'
+    if fmt == 'TIFF':
+        im.tiff_codec = 'DEFLATE'
+
+
+def _gcapture_format_ext(scene):
+    """Dateiendung, die Blender fuer das eingestellte Bildformat schreibt."""
+    fmt = scene.render.image_settings.file_format
+    return {'PNG': "png", 'TIFF': "tif", 'OPEN_EXR': "exr",
+            'OPEN_EXR_MULTILAYER': "exr", 'JPEG': "jpg",
+            'TARGA': "tga", 'TARGA_RAW': "tga", 'BMP': "bmp"}.get(fmt)
 
 
 def _gcapture_render_script_path(blend, engine):
@@ -3777,6 +3809,7 @@ def _gcapture_draw_render(layout, context):
     eevee = context.scene.render.engine != 'CYCLES'
     rcol = layout.column(align=True)
     rcol.enabled = bool(bpy.data.filepath)
+    rcol.row(align=True).prop(s, "render_format", expand=True)
     row = rcol.row(align=True)
     row.scale_y = 1.4
     # Beschriftung sagt, was der Klick tut: rendern oder Skript schreiben.
@@ -4042,7 +4075,8 @@ def _gcapture_wt_status_render(context, s):
     scene = context.scene
     expected = scene.frame_end - scene.frame_start + 1
     folder = _exp_resolve_image_dir(s)
-    _, _, frames = _exp_detect_frames(folder)
+    _, _, frames = _exp_detect_frames(folder,
+                                      prefer=_gcapture_format_ext(scene))
     have = len([f for f in frames
                 if scene.frame_start <= f <= scene.frame_end])
     short = os.path.basename(os.path.normpath(folder)) if folder else "?"
@@ -4829,7 +4863,10 @@ def _exp_resolve_image_dir(s):
     return path
 
 
-def _exp_detect_frames(image_dir):
+def _exp_detect_frames(image_dir, prefer=None):
+    """Bildfolge im Ordner erkennen. prefer: Endung des eingestellten
+    Formats -- liegt sie vor, gewinnt sie auch gegen mehr Bilder eines
+    anderen Formats aus einem frueheren Durchgang (1.2.0)."""
     if not image_dir or not os.path.isdir(image_dir):
         return None, None, []
     candidates = []
@@ -4842,7 +4879,11 @@ def _exp_detect_frames(image_dir):
     ext_counts = {}
     for _, e in candidates:
         ext_counts[e] = ext_counts.get(e, 0) + 1
-    chosen_ext = max(ext_counts, key=ext_counts.get)
+    prefer = (prefer or "").lower()
+    if prefer == "tif" and "tiff" in ext_counts and "tif" not in ext_counts:
+        prefer = "tiff"
+    chosen_ext = (prefer if prefer in ext_counts
+                  else max(ext_counts, key=ext_counts.get))
     stems = [st for st, e in candidates if e == chosen_ext]
     rx = re.compile(r"^(.*?)(\d+)$")
     parsed = [(m.group(1), m.group(2)) for m in (rx.match(st) for st in stems) if m]
@@ -5877,7 +5918,8 @@ class GCAPTURE_OT_export_colmap(Operator):
             os.makedirs(self._images_dir, exist_ok=True)
 
         self._src_dir = _exp_resolve_image_dir(s)
-        auto_pattern, auto_ext, auto_frames = _exp_detect_frames(self._src_dir)
+        auto_pattern, auto_ext, auto_frames = _exp_detect_frames(
+            self._src_dir, prefer=_gcapture_format_ext(context.scene))
         if not auto_pattern:
             raise RuntimeError("Could not detect filename pattern in: %s"
                                % self._src_dir)
