@@ -5677,10 +5677,21 @@ def _gcapture_ply_write(path, ply, keep, comment):
 
 
 def _cln_export_json_path(ds_dir):
-    """<vNNN>_gcapture_export.json sits NEXT TO the dataset folder (v145)."""
+    """<vNNN>_gcapture_export.json sits NEXT TO the dataset folder (v145).
+    Datasets from Gaussian Render Scan 1.0.x have the same file under its old
+    names: <vNNN>_gscan_export.json next to the dataset (from 0.145) or
+    gscan_export.json inside it (1.126.0-0.144). The first one that exists
+    wins; otherwise the current name (for the message)."""
     ds = os.path.normpath(ds_dir)
-    return os.path.join(os.path.dirname(ds),
-                        os.path.basename(ds) + "_gcapture_export.json")
+    current = os.path.join(os.path.dirname(ds),
+                           os.path.basename(ds) + "_gcapture_export.json")
+    for path in (current,
+                 os.path.join(os.path.dirname(ds),
+                              os.path.basename(ds) + "_gscan_export.json"),
+                 os.path.join(ds, "gscan_export.json")):
+        if os.path.isfile(path):
+            return path
+    return current
 
 
 def _cln_load_transform(json_path):

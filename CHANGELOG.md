@@ -11,6 +11,7 @@ documentation changes are not.
   LichtFeld Studio or Postshot) using the model's depth per dataset camera, and writes
   `<name>_clean.ply` next to it. Splats in front of the surface in at least *Min. Views* cameras
   (default 2) and splats no camera sees are removed; the original file stays untouched.
+  Datasets exported with Gaussian Render Scan 1.0.x (`gscan_export.json`) work as well.
 - Step 6 has an image format choice: **PNG** or **TIFF**, both RGBA 8 bit (TIFF with Deflate
   compression). It is applied on every render, also by *Command Line Render*. The export takes the
   chosen format when images of an earlier render in another format are still in the folder.
