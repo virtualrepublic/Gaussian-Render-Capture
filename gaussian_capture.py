@@ -4235,7 +4235,8 @@ _GCAPTURE_WT_STEPS = [
               "LichtFeld Studio.",
          steps=["Press Prepare Scene: Cycles renders on your GPU with the "
                 "capture render settings; Blender's start cube, camera and "
-                "light are removed.",
+                "light are removed. Leave Transparent Glass off - glass then "
+                "shows what lies behind it and stays clean in the splat.",
                 "Import your model and put it into its own collection.",
                 "Set the Focal Length of the capture camera - 50 mm is a good "
                 "default; the sphere adapts its size to the lens.",
