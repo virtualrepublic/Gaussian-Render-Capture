@@ -18,6 +18,10 @@ documentation changes are not.
   windows. The option *Transparent Glass* right below *Prepare Scene* switches transparent glass
   back on – for objects that are mostly glass, or splats shown in front of other backgrounds.
 
+- The export shows each step after the camera poses – collecting the vertices, adding face points,
+  preparing the visibility filter – instead of standing still for up to a minute on large models;
+  Esc works in between.
+
 ## [1.2.0] – 2026-09-26
 
 - Step 8 **Clean Splat**: removes the splats in empty space from a trained splat (`.ply` from

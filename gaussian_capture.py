@@ -7076,55 +7076,90 @@ class GCAPTURE_OT_export_colmap(Operator):
                 print("[Gaussian Render Capture] could not reuse point cloud:",
                       exc)
 
-        # --- Collect points (fast) ---
-        # Visible vertices as the main cloud, face points optionally added. If
-        # a visibility filter is active, the points are NOT filtered here
-        # synchronously (that blocked ESC), but as a modal phase
-        # bit by bit in the tick -> real ESC. Only collect here.
-        vmode = s.exp_face_points_vischeck
-        want_filter = (vmode == 'RAYCAST')
-        guide_objs = _collect_guide_objects(bpy.context,
-                                            bpy.context.active_object)
-        targets = self._point_targets(scene, s, guide_objs)
-        need_world = want_filter
+        # --- Collect points in steps (1.3.0) ---
+        # Visible vertices as the main cloud, face points optionally added,
+        # then the visibility filter as a modal phase (real ESC). Each step
+        # runs in a timer tick of its own and names itself in the progress
+        # bar first - in one piece the Beetle took 48 s without a word.
+        self._phase = 'filter'
+        self._stage = 'vertices'
+        self._start_time = time.time()
+        _gcapture_progress_set("gcapture.export_colmap", 1.0,
+                               "Start points: collecting the vertices ...")
+        return {'RUNNING_MODAL'}
 
-        # 1) Main cloud.
-        world_v = [] if need_world else None
-        glass_v = [] if need_world else None
-        pts, cols = _exp_gather_points(scene, self._scale, self._W, s,
-                                       world_out=world_v, glass_out=glass_v)
-        world_main = world_v
-        glass_main = glass_v
-        self._n_vert = len(pts)      # for the completion message (v103)
-        self._n_face = 0
-        self._filtered = False
+    def _stage_tick(self, context):
+        """One step of collecting the start points (1.3.0); see _finish."""
+        scene = context.scene
+        s = self._s
+        if self._stage == 'vertices':
+            vmode = s.exp_face_points_vischeck
+            want_filter = (vmode == 'RAYCAST')
+            guide_objs = _collect_guide_objects(bpy.context,
+                                                bpy.context.active_object)
+            targets = self._point_targets(scene, s, guide_objs)
+            need_world = want_filter
 
-        # 2) Add face points (optional). With Use Vertex Count: 10 % of the
-        # collected vertex points (v101), otherwise the entered value.
-        face_count = _exp_face_count(s, len(pts))
-        if s.exp_face_points:
-            world_f = [] if need_world else None
-            glass_f = [] if need_world else None
-            # Color like the vertex points: material of the face (v1.1.5).
-            fcols = [] if (cols is not None and s.exp_point_color != 'NONE') else None
-            fpts = _exp_sample_face_points(
-                targets, face_count, self._scale, self._W,
-                world_out=world_f, crop_bounds=self._crop_bounds,
-                colors_out=fcols, glass_out=glass_f)
-            if fpts:
-                self._n_face = len(fpts)
-                neutral = (200, 200, 200)
-                pts = list(pts) + list(fpts)
-                if cols is not None:
-                    if fcols and len(fcols) == len(fpts):
-                        cols = list(cols) + list(fcols)
-                    else:
-                        cols = list(cols) + [neutral] * len(fpts)
-                if need_world and world_main is not None and world_f is not None:
-                    world_main = list(world_main) + list(world_f)
-                    glass_main = list(glass_main) + list(glass_f)
-
-        # --- Start the filter phase modally or write directly ---
+            # 1) Main cloud.
+            world_v = [] if need_world else None
+            glass_v = [] if need_world else None
+            pts, cols = _exp_gather_points(scene, self._scale, self._W, s,
+                                           world_out=world_v, glass_out=glass_v)
+            world_main = world_v
+            glass_main = glass_v
+            self._n_vert = len(pts)      # for the completion message (v103)
+            self._n_face = 0
+            self._filtered = False
+            self._c = dict(pts=pts, cols=cols, world_main=world_main,
+                           glass_main=glass_main, targets=targets,
+                           guide_objs=guide_objs, want_filter=want_filter,
+                           need_world=need_world)
+            self._stage = 'faces' if s.exp_face_points else 'prepare'
+            _gcapture_progress_set(
+                "gcapture.export_colmap", 1.0,
+                "Start points: adding face points ..." if s.exp_face_points
+                else ("Preparing the visibility filter ..." if want_filter
+                      else "Writing the points ..."))
+            return {'RUNNING_MODAL'}
+        c = self._c
+        pts, cols = c["pts"], c["cols"]
+        world_main, glass_main = c["world_main"], c["glass_main"]
+        targets, guide_objs = c["targets"], c["guide_objs"]
+        want_filter, need_world = c["want_filter"], c["need_world"]
+        if self._stage == 'faces':
+            face_count = _exp_face_count(s, len(pts))
+            if s.exp_face_points:
+                world_f = [] if need_world else None
+                glass_f = [] if need_world else None
+                # Color like the vertex points: material of the face (v1.1.5).
+                fcols = [] if (cols is not None and s.exp_point_color != 'NONE') else None
+                fpts = _exp_sample_face_points(
+                    targets, face_count, self._scale, self._W,
+                    world_out=world_f, crop_bounds=self._crop_bounds,
+                    colors_out=fcols, glass_out=glass_f)
+                if fpts:
+                    self._n_face = len(fpts)
+                    neutral = (200, 200, 200)
+                    pts = list(pts) + list(fpts)
+                    if cols is not None:
+                        if fcols and len(fcols) == len(fpts):
+                            cols = list(cols) + list(fcols)
+                        else:
+                            cols = list(cols) + [neutral] * len(fpts)
+                    if need_world and world_main is not None and world_f is not None:
+                        world_main = list(world_main) + list(world_f)
+                        glass_main = list(glass_main) + list(glass_f)
+            c.update(pts=pts, cols=cols, world_main=world_main,
+                     glass_main=glass_main)
+            self._stage = 'prepare'
+            _gcapture_progress_set(
+                "gcapture.export_colmap", 1.0,
+                "Preparing the visibility filter ..." if want_filter
+                else "Writing the points ...")
+            return {'RUNNING_MODAL'}
+        # 'prepare': start the filter phase or write directly
+        self._stage = None
+        self._c = None
         if want_filter and pts and world_main:
             faces = _gcapture_all_guide_faces(bpy.context, None,
                                          guide_objs=guide_objs)
@@ -7200,6 +7235,8 @@ class GCAPTURE_OT_export_colmap(Operator):
         """One modal filter stage: test a batch of points against the
         cameras (ray cast). Real ESC, since in the modal tick. When all
         points are tested -> write."""
+        if getattr(self, "_stage", None):
+            return self._stage_tick(context)
         if getattr(self, "_flt_gpu", None) is not None:
             return self._filter_tick_gpu(context)
         BATCH = 4000
