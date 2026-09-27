@@ -6264,7 +6264,7 @@ class GCAPTURE_OT_clean_splat(Operator):
 
 
 def _exp_sample_face_points(objs, count, scale, W, world_out=None,
-                            crop_bounds=None, colors_out=None):
+                            crop_bounds=None, colors_out=None, glass_out=None):
     """Distributes 'count' points area-weighted over the surfaces of the
     objects (uniform initial density regardless of the vertex layout).
     Returns: list (x,y,z) in Y-up + scale; world_out receives the world
@@ -6281,6 +6281,8 @@ def _exp_sample_face_points(objs, count, scale, W, world_out=None,
     depsgraph = bpy.context.evaluated_depsgraph_get()
     tri_chunks = []
     col_chunks = []
+    glass_chunks = []
+    glass_cache = {}
     for obj in objs:
         if obj.type != 'MESH':
             continue
@@ -6301,23 +6303,33 @@ def _exp_sample_face_points(objs, count, scale, W, world_out=None,
             idx = np.empty(nt * 3, dtype=np.int32)
             mesh.loop_triangles.foreach_get("vertices", idx)
             tri_chunks.append(world[idx.reshape(nt, 3).astype(np.int64)])
-            if colors_out is not None:
+            mi = None
+            if colors_out is not None or glass_out is not None:
                 mi = np.empty(nt, dtype=np.int32)
                 mesh.loop_triangles.foreach_get("material_index", mi)
+            if colors_out is not None:
                 mc = np.array(_exp_object_material_colors(obj), dtype=np.float64)
                 col_chunks.append(mc[np.clip(mi, 0, len(mc) - 1)])
+            if glass_out is not None:
+                slots = _gcapture_see_through_slots(obj, glass_cache)
+                glass_chunks.append(
+                    np.array(slots)[np.clip(mi, 0, len(slots) - 1)] if slots
+                    else np.zeros(nt, dtype=bool))
         finally:
             obj_eval.to_mesh_clear()
     if not tri_chunks or count <= 0:
         return []
     A = np.vstack(tri_chunks)                                   # (T,3,3)
     C = np.vstack(col_chunks) if col_chunks else None           # (T,3)
+    G = np.concatenate(glass_chunks) if glass_chunks else None  # (T,)
     area = 0.5 * np.linalg.norm(np.cross(A[:, 1] - A[:, 0],
                                          A[:, 2] - A[:, 0]), axis=1)
     good = area > 0.0
     A, area = A[good], area[good]
     if C is not None:
         C = C[good]
+    if G is not None:
+        G = G[good]
     if not len(A):
         return []
     prob = area / area.sum()
@@ -6365,6 +6377,8 @@ def _exp_sample_face_points(objs, count, scale, W, world_out=None,
         world_out.extend(map(Vector, world.tolist()))
     if colors_out is not None and C is not None:
         colors_out.extend(map(tuple, _exp_srgb_bytes_np(C[pick_all]).tolist()))
+    if glass_out is not None and G is not None:
+        glass_out.extend(G[pick_all].tolist())
     # tolist() -> real Python floats for points3D.txt (v109 fix).
     return out.tolist()
 
@@ -6461,7 +6475,7 @@ def _exp_vertex_first_material(mesh, n):
     return vm
 
 
-def _exp_gather_points(scene, scale, W, s, world_out=None):
+def _exp_gather_points(scene, scale, W, s, world_out=None, glass_out=None):
     """Main cloud from the vertices of the point cloud objects, with crop,
     color and upper limit. Since v110 with numpy instead of a Python loop
     per vertex (Vespa: 5.4 million vertices); same result as before."""
@@ -6475,7 +6489,8 @@ def _exp_gather_points(scene, scale, W, s, world_out=None):
     if crop_bounds is not None:
         c_mn = np.array(tuple(crop_bounds[0]), dtype=np.float64)
         c_mx = np.array(tuple(crop_bounds[1]), dtype=np.float64)
-    worlds, colors = [], []
+    worlds, colors, glasses = [], [], []
+    glass_cache = {}
 
     for obj in objs:
         eval_obj = obj.evaluated_get(depsgraph)
@@ -6507,12 +6522,22 @@ def _exp_gather_points(scene, scale, W, s, world_out=None):
                     ok = (vm >= 0) & (vm < len(mat_colors))
                     rgb[ok] = mat_colors[vm[ok]]
 
+            # Point on glass (1.3.0): its first material is see-through.
+            glass = np.zeros(n, dtype=bool)
+            if glass_out is not None:
+                slots = _gcapture_see_through_slots(obj, glass_cache)
+                if slots:
+                    vm = _exp_vertex_first_material(mesh, n)
+                    ok = vm >= 0
+                    glass[ok] = np.array(slots)[np.clip(vm[ok], 0, len(slots) - 1)]
             if crop_bounds is not None:
                 keep = np.all((world >= c_mn) & (world <= c_mx), axis=1)
                 world = world[keep]
+                glass = glass[keep]
                 if rgb is not None:
                     rgb = rgb[keep]
             worlds.append(world)
+            glasses.append(glass)
             if rgb is None:
                 colors.append(np.full((len(world), 3), 200, dtype=np.int64))
             else:
@@ -6527,6 +6552,7 @@ def _exp_gather_points(scene, scale, W, s, world_out=None):
         return [], []
     world_all = np.vstack(worlds)
     col_all = np.vstack(colors)
+    glass_all = np.concatenate(glasses)
 
     # Downsample together (positions and colors in sync).
     cap = _exp_max_points_effective(s)
@@ -6535,18 +6561,21 @@ def _exp_gather_points(scene, scale, W, s, world_out=None):
         idx = np.array([int(i * step) for i in range(cap)], dtype=np.int64)
         world_all = world_all[idx]
         col_all = col_all[idx]
+        glass_all = glass_all[idx]
 
     Wm = np.array(W, dtype=np.float64)
     pts = (world_all @ Wm.T) * scale
     if world_out is not None:
         world_out.extend(map(Vector, world_all.tolist()))
+    if glass_out is not None:
+        glass_out.extend(glass_all.tolist())
     # tolist(): real Python numbers for points3D.txt (see v109). Rows
     # stay lists -- building tuples from them cost several seconds with
     # 5 million points; the writing code unpacks both the same way.
     return pts.tolist(), col_all.tolist()
 
 
-_EXP_SIGNATURE_VERSION = 3
+_EXP_SIGNATURE_VERSION = 4
 
 
 def _exp_face_count(s, n_vertex_points):
@@ -7058,9 +7087,11 @@ class GCAPTURE_OT_export_colmap(Operator):
 
         # 1) Main cloud.
         world_v = [] if need_world else None
+        glass_v = [] if need_world else None
         pts, cols = _exp_gather_points(scene, self._scale, self._W, s,
-                                       world_out=world_v)
+                                       world_out=world_v, glass_out=glass_v)
         world_main = world_v
+        glass_main = glass_v
         self._n_vert = len(pts)      # for the completion message (v103)
         self._n_face = 0
         self._filtered = False
@@ -7070,12 +7101,13 @@ class GCAPTURE_OT_export_colmap(Operator):
         face_count = _exp_face_count(s, len(pts))
         if s.exp_face_points:
             world_f = [] if need_world else None
+            glass_f = [] if need_world else None
             # Color like the vertex points: material of the face (v1.1.5).
             fcols = [] if (cols is not None and s.exp_point_color != 'NONE') else None
             fpts = _exp_sample_face_points(
                 targets, face_count, self._scale, self._W,
                 world_out=world_f, crop_bounds=self._crop_bounds,
-                colors_out=fcols)
+                colors_out=fcols, glass_out=glass_f)
             if fpts:
                 self._n_face = len(fpts)
                 neutral = (200, 200, 200)
@@ -7087,6 +7119,7 @@ class GCAPTURE_OT_export_colmap(Operator):
                         cols = list(cols) + [neutral] * len(fpts)
                 if need_world and world_main is not None and world_f is not None:
                     world_main = list(world_main) + list(world_f)
+                    glass_main = list(glass_main) + list(glass_f)
 
         # --- Start the filter phase modally or write directly ---
         if want_filter and pts and world_main:
@@ -7094,12 +7127,17 @@ class GCAPTURE_OT_export_colmap(Operator):
                                          guide_objs=guide_objs)
             self._flt_cams = [f[0] for f in faces]
             # GPU depth images (v105); without a GPU context, ray cast as before.
+            # Glass (1.3.0): points behind glass are tested with the glass
+            # removed (a car's interior seen through its windows), points ON
+            # glass with the glass in place - only the panes seen from outside
+            # keep theirs. Like merging a cloud without the glass objects
+            # with one that has them (maintainer, 27.09.2026).
+            self._flt_glass = np.array(glass_main, dtype=bool)
+            on_glass = np.nonzero(self._flt_glass)[0]
+            off_glass = np.nonzero(~self._flt_glass)[0]
             self._flt_gpu = None
             if not bpy.app.background:
                 try:
-                    # Glass does not hide what lies behind it (1.3.0):
-                    # the cameras see a car's interior through the windows.
-                    self._flt_gpu = _ExpGpuDepth(targets, see_through=True)
                     self._flt_views = [
                         (f[0], _gcapture_look_dir_for(s, f[0], f[1], f[2], f[3]))
                         for f in faces]
@@ -7108,10 +7146,23 @@ class GCAPTURE_OT_export_colmap(Operator):
                                             dtype=np.float64)
                     self._flt_vis = np.zeros(len(world_main), dtype=bool)
                     self._flt_cam_i = 0
+                    # (depth maps, indices of the points they test)
+                    self._flt_groups = []
+                    if len(off_glass):
+                        try:
+                            self._flt_groups.append(
+                                (_ExpGpuDepth(targets, see_through=True), off_glass))
+                        except RuntimeError:          # everything is glass
+                            self._flt_vis[off_glass] = True
+                    if len(on_glass):
+                        self._flt_groups.append((_ExpGpuDepth(targets), on_glass))
+                    self._flt_gpu = (self._flt_groups[0][0] if self._flt_groups
+                                     else _ExpGpuDepth(targets))
                     # Compute shader (v111); else numpy per camera.
                     self._flt_compute = False
                     try:
-                        self._flt_gpu.compute_begin(self._flt_np)
+                        for g, idx in self._flt_groups:
+                            g.compute_begin(self._flt_np[idx])
                         self._flt_compute = True
                     except Exception as exc:
                         print("[Gaussian Render Capture] GPU compute unavailable, "
@@ -7120,8 +7171,13 @@ class GCAPTURE_OT_export_colmap(Operator):
                     print("[Gaussian Render Capture] GPU visibility unavailable, "
                           "using ray casting:", exc)
                     self._flt_gpu = None
-            self._flt_bvh = (None if self._flt_gpu is not None
-                             else _exp_build_scene_bvh(targets, see_through=True))
+            if self._flt_gpu is None:
+                # ray casting; None = no geometry in the way
+                self._flt_bvh = _exp_build_scene_bvh(targets, see_through=True)
+                self._flt_bvh_solid = (_exp_build_scene_bvh(targets)
+                                       if len(on_glass) else None)
+            else:
+                self._flt_bvh = self._flt_bvh_solid = None
             self._flt_world = world_main
             self._flt_pts = pts
             self._flt_cols = cols
@@ -7145,11 +7201,13 @@ class GCAPTURE_OT_export_colmap(Operator):
             return self._filter_tick_gpu(context)
         BATCH = 4000
         end = min(self._flt_idx + BATCH, self._flt_total)
-        bvh = self._flt_bvh
         cams = self._flt_cams
+        glass = getattr(self, "_flt_glass", None)
         for i in range(self._flt_idx, end):
             wp = self._flt_world[i]
-            if _exp_visible_ray(wp, bvh, cams):
+            bvh = (self._flt_bvh_solid if glass is not None and glass[i]
+                   else self._flt_bvh)
+            if bvh is None or _exp_visible_ray(wp, bvh, cams):
                 self._flt_kept_pts.append(self._flt_pts[i])
                 if self._flt_cols is not None:
                     self._flt_kept_cols.append(self._flt_cols[i])
@@ -7172,22 +7230,28 @@ class GCAPTURE_OT_export_colmap(Operator):
         points already seen by a camera are not tested again."""
         t0 = time.time()
         n_cams = len(self._flt_views)
+        groups = self._flt_groups
         if getattr(self, "_flt_compute", False):
             while self._flt_cam_i < n_cams and time.time() - t0 < 0.1:
                 pos, look = self._flt_views[self._flt_cam_i]
-                self._flt_gpu.compute_camera(pos, look, self._flt_fov)
+                for g, idx in groups:
+                    g.compute_camera(pos, look, self._flt_fov)
                 self._flt_cam_i += 1
             if self._flt_cam_i >= n_cams:
-                self._flt_vis = self._flt_gpu.compute_result()
+                for g, idx in groups:
+                    self._flt_vis[idx] = g.compute_result()
         while self._flt_cam_i < n_cams and time.time() - t0 < 0.25:
             pos, look = self._flt_views[self._flt_cam_i]
-            todo = np.nonzero(~self._flt_vis)[0]
-            if len(todo) == 0:
+            left = False
+            for g, idx in groups:
+                todo = idx[~self._flt_vis[idx]]
+                if len(todo):
+                    left = True
+                    seen = g.visible(self._flt_np[todo], pos, look, self._flt_fov)
+                    self._flt_vis[todo[seen]] = True
+            if not left:
                 self._flt_cam_i = n_cams
                 break
-            seen = self._flt_gpu.visible(self._flt_np[todo], pos, look,
-                                         self._flt_fov)
-            self._flt_vis[todo[seen]] = True
             self._flt_cam_i += 1
         if getattr(self, "_flt_compute", False):
             ftext = "Visibility filter (GPU): camera %d/%d" % (
@@ -7204,6 +7268,7 @@ class GCAPTURE_OT_export_colmap(Operator):
             cols = ([self._flt_cols[i] for i in keep]
                     if self._flt_cols is not None else None)
             self._flt_gpu = None
+            self._flt_groups = []
             return self._write_and_done(context, pts, cols, cancelled=False)
         return {'RUNNING_MODAL'}
 

@@ -8,10 +8,11 @@ documentation changes are not.
 ## [Unreleased]
 
 - The visibility filter of the start points looks through glass: surfaces seen only through
-  a window – e.g. a car's interior – keep their start points. Glass is recognised from the
-  material (Glass, Transparent or Refraction BSDF, or Principled BSDF with Transmission of 0.5 or
-  more, also inside node groups such as Mecabricks' materials). Clean Splat still treats glass as
-  a surface. Datasets are recomputed once on the next export instead of reusing the stored points.
+  a window – e.g. a car's interior – keep their start points, while points on the glass itself keep
+  only the panes seen from outside. Glass is recognised from the material (Glass, Transparent or
+  Refraction BSDF, or Principled BSDF with Transmission of 0.5 or more, also inside node groups such
+  as Mecabricks' materials). Clean Splat still treats glass as a surface. Datasets are recomputed
+  once on the next export instead of reusing the stored points.
 - *Prepare Scene* renders glass opaque in the alpha channel: panes show what lies behind them. With
   transparent glass they came out semi-transparent and blotchy, and the splat got a haze behind
   windows. The new option *See-through Glass* (Advanced › Render Setup) switches transparent glass
