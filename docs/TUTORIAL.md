@@ -73,7 +73,9 @@ You can leave the guide with **Exit** at any time; all sections are then shown a
 
 1. Press **Prepare Scene**. Cycles now renders on your graphics card, with the render settings
    that suit a capture (1024 samples, denoising, transparent background). Blender's start cube,
-   camera and light are removed – only if you did not change them.
+   camera and light are removed – only if you did not change them. Leave **Transparent Glass**
+   below it off: glass then shows what lies behind it, e.g. a car's interior, and stays clean in the
+   splat. Switch it on only for objects that are mostly glass.
 2. Import your model and put it into its own collection (if not done yet).
 3. Set the **Focal Length** of the capture camera – 50 mm is a good default.
 4. Keep **Look Target** at *Geometry Center*.

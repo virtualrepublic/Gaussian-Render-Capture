@@ -5,7 +5,7 @@ All notable changes to this project are documented here. The project follows
 changes that break existing scenes or settings. Only changes to the add-on itself are listed;
 documentation changes are not.
 
-## [Unreleased]
+## [1.3.0] – 2026-09-27
 
 - The visibility filter of the start points looks through glass: surfaces seen only through
   a window – e.g. a car's interior – keep their start points, while points on the glass itself keep
@@ -17,7 +17,6 @@ documentation changes are not.
   transparent glass they came out semi-transparent and blotchy, and the splat got a haze behind
   windows. The option *Transparent Glass* right below *Prepare Scene* switches transparent glass
   back on – for objects that are mostly glass, or splats shown in front of other backgrounds.
-
 - The export shows each step after the camera poses – collecting the vertices, adding face points,
   preparing the visibility filter – instead of standing still for up to a minute on large models;
   Esc works in between.
