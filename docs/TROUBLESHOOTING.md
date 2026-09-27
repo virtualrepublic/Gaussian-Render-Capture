@@ -78,3 +78,13 @@ the original file is untouched, delete the `_clean.ply`.
 
 **Clean Splat: "Could not write … _clean.ply".** The file is open in a viewer (SuperSplat,
 LichtFeld, Postshot). Close it there and press Clean Splat again.
+
+**Haze or blotches behind windows (e.g. a car's interior).** Transparent glass renders the panes
+semi-transparent and blotchy, differently in every view. Keep *See-through Glass* (Advanced › Render
+Setup) off, press *Prepare Scene* and render again. Export the dataset again as well: the start points behind glass are
+kept since version 1.3.0.
+
+**The glass looks grey or white in the splat.** With *See-through Glass* off, glass shows the scene's
+world colour where you look through it into the background. Use a neutral world colour, or switch
+*See-through Glass* on for objects that are mostly glass.
+

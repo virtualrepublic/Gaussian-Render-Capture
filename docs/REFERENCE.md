@@ -112,4 +112,5 @@ rigs, Render Setup (see step 6), maintainer and licence.
 
 | Setting | Default | What it does |
 |---|---|---|
+| See-through Glass (Render Setup) | off | Off: glass is rendered opaque in the alpha channel and shows what lies behind it – a car's interior stays clean in the splat; where the background is seen through the glass, the scene's world colour appears. On: glass becomes transparent against the empty background (Cycles *Transparent Glass*) – for objects that are mostly glass, or for splats shown in front of other backgrounds. Applies at once and with *Prepare Scene*. |
 | Min. Views (Clean Splat) | 2 | A splat is removed when it lies in front of the surface in at least this many cameras. 1 removes more, higher values less. |

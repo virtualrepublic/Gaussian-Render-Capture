@@ -536,6 +536,17 @@ class GCAPTURE_Settings(PropertyGroup):
                     "is closed",
         default=False,
     )
+    prep_see_through_glass: BoolProperty(
+        name="See-through Glass",
+        description="Render glass transparent against the empty background "
+                    "(Cycles Transparent Glass). Only for objects that are mostly "
+                    "glass, or for splats shown in front of other backgrounds. "
+                    "Off: glass shows what lies behind it - a car's interior "
+                    "stays clean in the splat; where the background is seen "
+                    "through the glass, the world color of the scene appears",
+        default=False,
+        update=lambda self, context: _gcapture_apply_see_through_glass(context.scene),
+    )
     render_format: EnumProperty(
         name="Image Format",
         description="File format of the rendered images. Both are read by "
@@ -3014,7 +3025,11 @@ _GCAPTURE_PREPARE_SETTINGS = (
     ("cycles.volume_bounces", 32),
     ("cycles.transparent_max_bounces", 32),
     ("render.film_transparent", True),
-    ("cycles.film_transparent_glass", True),
+    # Glass opaque in alpha (1.3.0): panes show what lies behind them. With
+    # transparent glass they came out semi-transparent and blotchy, different
+    # in every view, and the splat got a haze there (Beetle, 27.09.2026).
+    # Prepare Scene then applies the option See-through Glass.
+    ("cycles.film_transparent_glass", False),
     ("view_settings.look", 'AgX - Base Contrast'),
     ("render.compositor_device", 'GPU'),
     ("eevee.fast_gi_thickness_near", 0.25),
@@ -3077,8 +3092,16 @@ def _gcapture_apply_prepare(scene, dtype):
     Intel drivers (PI_ERROR_INVALID_VALUE) -- even on the CPU. If Cycles
     renders with OptiX there, its denoiser does the denoising (v1.1.5)."""
     skipped = _gcapture_apply_settings(scene, _GCAPTURE_PREPARE_SETTINGS)
+    _gcapture_apply_see_through_glass(scene)
     _gcapture_fix_denoiser(scene, dtype)
     return skipped
+
+
+def _gcapture_apply_see_through_glass(scene):
+    """Transparent glass only if chosen (See-through Glass, 1.3.0)."""
+    cyc = getattr(scene, "cycles", None)
+    if cyc is not None and hasattr(cyc, "film_transparent_glass"):
+        cyc.film_transparent_glass = scene.gcapture_settings.prep_see_through_glass
 
 
 def _gcapture_fix_denoiser(scene, dtype):
@@ -4751,6 +4774,7 @@ class GCAPTURE_PT_advanced(_GCAPTURE_SubPanel, Panel):
         rcol.prop(s, "set_active_camera")
         rcol.prop(s, "set_frame_range")
         rcol.prop(s, "set_resolution")
+        rcol.prop(s, "prep_see_through_glass")
 
         # --- Maintainer & license (GPL attribution, mandatory) ---
         layout.separator()
@@ -5244,7 +5268,7 @@ def _gcapture_tree_see_through(tree, starts, depth=0):
 
 
 def _gcapture_is_see_through(mat):
-    """Glass-like material (1.2.1): the cameras see through it. The
+    """Glass-like material (1.3.0): the cameras see through it. The
     visibility filter of the start points then keeps what lies behind it,
     e.g. the interior of a car behind its windows."""
     if mat is None or not mat.use_nodes or mat.node_tree is None:
@@ -5280,7 +5304,7 @@ def _exp_build_scene_bvh(objs, see_through=False):
     for obj in objs:
         if obj.type != 'MESH':
             continue
-        # see_through (1.2.1): glass does not block the view
+        # see_through (1.3.0): glass does not block the view
         skip = _gcapture_see_through_slots(obj, cache) if see_through else None
         obj_eval = obj.evaluated_get(depsgraph)
         mesh = obj_eval.to_mesh()
@@ -5444,7 +5468,7 @@ class _ExpGpuDepth:
                     tri = np.empty(nt * 3, dtype=np.int32)
                     me.loop_triangles.foreach_get("vertices", tri)
                     tri = tri.reshape(-1, 3)
-                    # see_through (1.2.1): glass does not block the view
+                    # see_through (1.3.0): glass does not block the view
                     skip = (_gcapture_see_through_slots(o, cache)
                             if see_through else None)
                     if skip:
@@ -6557,7 +6581,7 @@ def _exp_point_signature(scene, s, cam_views, scale, W):
     for o in _exp_point_source_objects(scene, s):
         oe = o.evaluated_get(depsgraph)
         add(o.name, [round(v, 6) for row in oe.matrix_world for v in row])
-        # glass lets the visibility filter look through (1.2.1)
+        # glass lets the visibility filter look through (1.3.0)
         add("see_through", _gcapture_see_through_slots(o, glass_cache))
         me = oe.to_mesh()
         if me is None:
@@ -7073,7 +7097,7 @@ class GCAPTURE_OT_export_colmap(Operator):
             self._flt_gpu = None
             if not bpy.app.background:
                 try:
-                    # Glass does not hide what lies behind it (1.2.1):
+                    # Glass does not hide what lies behind it (1.3.0):
                     # the cameras see a car's interior through the windows.
                     self._flt_gpu = _ExpGpuDepth(targets, see_through=True)
                     self._flt_views = [

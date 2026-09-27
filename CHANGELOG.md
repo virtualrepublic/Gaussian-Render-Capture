@@ -12,6 +12,10 @@ documentation changes are not.
   material (Glass, Transparent or Refraction BSDF, or Principled BSDF with Transmission of 0.5 or
   more, also inside node groups such as Mecabricks' materials). Clean Splat still treats glass as
   a surface. Datasets are recomputed once on the next export instead of reusing the stored points.
+- *Prepare Scene* renders glass opaque in the alpha channel: panes show what lies behind them. With
+  transparent glass they came out semi-transparent and blotchy, and the splat got a haze behind
+  windows. The new option *See-through Glass* (Advanced › Render Setup) switches transparent glass
+  back on – for objects that are mostly glass, or splats shown in front of other backgrounds.
 
 ## [1.2.0] – 2026-09-26
 
