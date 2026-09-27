@@ -537,13 +537,15 @@ class GCAPTURE_Settings(PropertyGroup):
         default=False,
     )
     prep_see_through_glass: BoolProperty(
-        name="See-through Glass",
-        description="Render glass transparent against the empty background "
-                    "(Cycles Transparent Glass). Only for objects that are mostly "
-                    "glass, or for splats shown in front of other backgrounds. "
-                    "Off: glass shows what lies behind it - a car's interior "
-                    "stays clean in the splat; where the background is seen "
-                    "through the glass, the world color of the scene appears",
+        name="Transparent Glass",
+        description="Blender's Transparent Glass (Render Properties > Film): "
+                    "glass becomes transparent against the empty background. "
+                    "Only for objects that are mostly glass, or for splats shown "
+                    "in front of other backgrounds - the panes then come out "
+                    "semi-transparent and blotchy, a haze in the splat. Off "
+                    "(recommended): glass shows what lies behind it - a car's "
+                    "interior stays clean; where the background is seen through "
+                    "the glass, the world color of the scene appears",
         default=False,
         update=lambda self, context: _gcapture_apply_see_through_glass(context.scene),
     )
@@ -3028,7 +3030,7 @@ _GCAPTURE_PREPARE_SETTINGS = (
     # Glass opaque in alpha (1.3.0): panes show what lies behind them. With
     # transparent glass they came out semi-transparent and blotchy, different
     # in every view, and the splat got a haze there (Beetle, 27.09.2026).
-    # Prepare Scene then applies the option See-through Glass.
+    # Prepare Scene then applies the option Transparent Glass.
     ("cycles.film_transparent_glass", False),
     ("view_settings.look", 'AgX - Base Contrast'),
     ("render.compositor_device", 'GPU'),
@@ -3098,7 +3100,7 @@ def _gcapture_apply_prepare(scene, dtype):
 
 
 def _gcapture_apply_see_through_glass(scene):
-    """Transparent glass only if chosen (See-through Glass, 1.3.0)."""
+    """Transparent glass only if chosen (option Transparent Glass, 1.3.0)."""
     cyc = getattr(scene, "cycles", None)
     if cyc is not None and hasattr(cyc, "film_transparent_glass"):
         cyc.film_transparent_glass = scene.gcapture_settings.prep_see_through_glass
@@ -4078,6 +4080,7 @@ def _gcapture_draw_intro(layout, context):
     row.scale_y = 1.2
     _gcapture_action(row, "gcapture.prepare_scene",
                 not _gcapture_scene_prepared(context.scene), 'SCENE_DATA')
+    layout.prop(context.scene.gcapture_settings, "prep_see_through_glass")
     layout.separator(factor=0.5)
     _gcapture_draw_camera(layout, context)
 
@@ -4597,6 +4600,7 @@ class GCAPTURE_PT_panel(Panel):
         row.operator("gcapture.walkthrough_start", icon='HELP')
         _gcapture_action(layout, "gcapture.prepare_scene",
                     not _gcapture_scene_prepared(context.scene), 'SCENE_DATA')
+        layout.prop(s, "prep_see_through_glass")
         col = layout.column(align=True)
         col.scale_y = 0.9
         col.label(text="First (in Blender): import your model", icon='INFO')
@@ -4774,7 +4778,6 @@ class GCAPTURE_PT_advanced(_GCAPTURE_SubPanel, Panel):
         rcol.prop(s, "set_active_camera")
         rcol.prop(s, "set_frame_range")
         rcol.prop(s, "set_resolution")
-        rcol.prop(s, "prep_see_through_glass")
 
         # --- Maintainer & license (GPL attribution, mandatory) ---
         layout.separator()

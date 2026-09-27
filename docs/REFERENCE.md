@@ -7,7 +7,8 @@ in short.
 
 | Setting / button | Default | What it does |
 |---|---|---|
-| **Prepare Scene** | – | Cycles on the fastest GPU backend (OptiX, CUDA, HIP, Metal, oneAPI; GPUs on, CPU off), capture render settings (1024 samples, GPU denoising, all bounces 32, transparent film and glass, AgX Base Contrast), removes Blender's unchanged start cube, camera and light. |
+| **Prepare Scene** | – | Cycles on the fastest GPU backend (OptiX, CUDA, HIP, Metal, oneAPI; GPUs on, CPU off), capture render settings (1024 samples, GPU denoising, all bounces 32, transparent film, opaque glass, AgX Base Contrast), removes Blender's unchanged start cube, camera and light. |
+| Transparent Glass | off | Blender's *Transparent Glass* (Render Properties › Film), set right below *Prepare Scene*. Off: glass is rendered opaque in the alpha channel and shows what lies behind it – a car's interior stays clean in the splat; where the background is seen through the glass, the scene's world colour appears. On: glass becomes transparent against the empty background – for objects that are mostly glass, or for splats shown in front of other backgrounds; the panes then come out semi-transparent and blotchy. Applies at once and with *Prepare Scene*. |
 | Camera Name | Orbit_Camera | Name of the capture camera created by Build. |
 | Start Frame | 1 | First frame of the camera animation. |
 | Focal Length (mm) | 50 | Lens of the capture camera; the sphere adapts its size to it. |
@@ -112,5 +113,4 @@ rigs, Render Setup (see step 6), maintainer and licence.
 
 | Setting | Default | What it does |
 |---|---|---|
-| See-through Glass (Render Setup) | off | Off: glass is rendered opaque in the alpha channel and shows what lies behind it – a car's interior stays clean in the splat; where the background is seen through the glass, the scene's world colour appears. On: glass becomes transparent against the empty background (Cycles *Transparent Glass*) – for objects that are mostly glass, or for splats shown in front of other backgrounds. Applies at once and with *Prepare Scene*. |
 | Min. Views (Clean Splat) | 2 | A splat is removed when it lies in front of the surface in at least this many cameras. 1 removes more, higher values less. |
