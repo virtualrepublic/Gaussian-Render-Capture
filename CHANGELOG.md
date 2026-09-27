@@ -5,6 +5,14 @@ All notable changes to this project are documented here. The project follows
 changes that break existing scenes or settings. Only changes to the add-on itself are listed;
 documentation changes are not.
 
+## [Unreleased]
+
+- The visibility filter of the start points looks through glass: surfaces seen only through
+  a window – e.g. a car's interior – keep their start points. Glass is recognised from the
+  material (Glass, Transparent or Refraction BSDF, or Principled BSDF with Transmission of 0.5 or
+  more, also inside node groups such as Mecabricks' materials). Clean Splat still treats glass as
+  a surface. Datasets are recomputed once on the next export instead of reusing the stored points.
+
 ## [1.2.0] – 2026-09-26
 
 - Step 8 **Clean Splat**: removes the splats in empty space from a trained splat (`.ply` from

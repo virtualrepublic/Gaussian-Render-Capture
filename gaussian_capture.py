@@ -5211,7 +5211,63 @@ def _exp_point_in_bounds(co_world, bounds):
             mn.z <= co_world.z <= mx.z)
 
 
-def _exp_build_scene_bvh(objs):
+_GCAPTURE_SEE_THROUGH_BSDF = {'BSDF_GLASS', 'BSDF_TRANSPARENT', 'BSDF_REFRACTION'}
+
+
+def _gcapture_tree_see_through(tree, starts, depth=0):
+    """True if a node reachable backwards from starts is glass-like: a Glass,
+    Transparent or Refraction BSDF, or a Principled BSDF with Transmission
+    >= 0.5 (not driven by a link). Node groups are followed (Mecabricks keeps
+    its glass in mb_base_transparent). Unconnected nodes do not count."""
+    if depth > 6:
+        return False
+    stack, seen = list(starts), set()
+    while stack:
+        n = stack.pop()
+        if n.name in seen:
+            continue
+        seen.add(n.name)
+        if n.type in _GCAPTURE_SEE_THROUGH_BSDF:
+            return True
+        if n.type == 'BSDF_PRINCIPLED':
+            sock = n.inputs.get("Transmission Weight") or n.inputs.get("Transmission")
+            if sock is not None and not sock.is_linked and sock.default_value >= 0.5:
+                return True
+        if n.type == 'GROUP' and n.node_tree is not None:
+            outs = [g for g in n.node_tree.nodes if g.type == 'GROUP_OUTPUT']
+            if _gcapture_tree_see_through(n.node_tree, outs, depth + 1):
+                return True
+        for sock in n.inputs:
+            for link in sock.links:
+                stack.append(link.from_node)
+    return False
+
+
+def _gcapture_is_see_through(mat):
+    """Glass-like material (1.2.1): the cameras see through it. The
+    visibility filter of the start points then keeps what lies behind it,
+    e.g. the interior of a car behind its windows."""
+    if mat is None or not mat.use_nodes or mat.node_tree is None:
+        return False
+    nodes = mat.node_tree.nodes
+    outs = [n for n in nodes if n.type == 'OUTPUT_MATERIAL' and n.is_active_output]
+    outs = outs or [n for n in nodes if n.type == 'OUTPUT_MATERIAL']
+    return _gcapture_tree_see_through(mat.node_tree, outs)
+
+
+def _gcapture_see_through_slots(obj, cache):
+    """Per material slot of obj: see-through? None if no slot is (fast path)."""
+    flags = []
+    for sl in obj.material_slots:
+        mat = sl.material
+        key = mat.name if mat is not None else ""
+        if key not in cache:
+            cache[key] = _gcapture_is_see_through(mat)
+        flags.append(cache[key])
+    return flags if any(flags) else None
+
+
+def _exp_build_scene_bvh(objs, see_through=False):
     """Single world-space BVHTree over all given meshes.
     Derived from "Gauss Cannon" by Arash Keshmirian (Warpgate Labs),
     GPL-3.0-or-later;
@@ -5220,9 +5276,12 @@ def _exp_build_scene_bvh(objs):
     vert_arrays = []
     all_polys = []
     offset = 0
+    cache = {}
     for obj in objs:
         if obj.type != 'MESH':
             continue
+        # see_through (1.2.1): glass does not block the view
+        skip = _gcapture_see_through_slots(obj, cache) if see_through else None
         obj_eval = obj.evaluated_get(depsgraph)
         mesh = obj_eval.to_mesh()
         if mesh is None:
@@ -5233,8 +5292,10 @@ def _exp_build_scene_bvh(objs):
             flat = np.empty(n_verts * 3, dtype=np.float32)
             mesh.vertices.foreach_get("co", flat)
             vert_arrays.append(flat.reshape(-1, 3))
+            last = len(skip) - 1 if skip else 0
             all_polys.extend([i + offset for i in p.vertices]
-                             for p in mesh.polygons)
+                             for p in mesh.polygons
+                             if not (skip and skip[min(p.material_index, last)]))
             offset += n_verts
         finally:
             obj_eval.to_mesh_clear()
@@ -5356,11 +5417,12 @@ void main()
 class _ExpGpuDepth:
     """Holds the geometry batch and framebuffer for the depth images."""
 
-    def __init__(self, objs, res=_EXP_GPU_RES, geometry=None):
+    def __init__(self, objs, res=_EXP_GPU_RES, geometry=None, see_through=False):
         import gpu
         from gpu_extras.batch import batch_for_shader
         depsgraph = bpy.context.evaluated_depsgraph_get()
         verts, tris, off = [], [], 0
+        cache = {}
         if geometry is not None:            # Clean Splat: ready triangles (1.2.0)
             verts, tris, objs = [geometry[0]], [geometry[1]], ()
         for o in objs:
@@ -5381,7 +5443,16 @@ class _ExpGpuDepth:
                     verts.append(co.reshape(-1, 3) @ mw[:3, :3].T + mw[:3, 3])
                     tri = np.empty(nt * 3, dtype=np.int32)
                     me.loop_triangles.foreach_get("vertices", tri)
-                    tris.append(tri.reshape(-1, 3) + off)
+                    tri = tri.reshape(-1, 3)
+                    # see_through (1.2.1): glass does not block the view
+                    skip = (_gcapture_see_through_slots(o, cache)
+                            if see_through else None)
+                    if skip:
+                        mi = np.empty(nt, dtype=np.int32)
+                        me.loop_triangles.foreach_get("material_index", mi)
+                        glass = np.array(skip)[np.clip(mi, 0, len(skip) - 1)]
+                        tri = tri[~glass]
+                    tris.append(tri + off)
                     off += n
             finally:
                 oe.to_mesh_clear()
@@ -6451,7 +6522,7 @@ def _exp_gather_points(scene, scale, W, s, world_out=None):
     return pts.tolist(), col_all.tolist()
 
 
-_EXP_SIGNATURE_VERSION = 2
+_EXP_SIGNATURE_VERSION = 3
 
 
 def _exp_face_count(s, n_vertex_points):
@@ -6482,9 +6553,12 @@ def _exp_point_signature(scene, s, cam_views, scale, W):
 
     add("signature", _EXP_SIGNATURE_VERSION)
     depsgraph = bpy.context.evaluated_depsgraph_get()
+    glass_cache = {}
     for o in _exp_point_source_objects(scene, s):
         oe = o.evaluated_get(depsgraph)
         add(o.name, [round(v, 6) for row in oe.matrix_world for v in row])
+        # glass lets the visibility filter look through (1.2.1)
+        add("see_through", _gcapture_see_through_slots(o, glass_cache))
         me = oe.to_mesh()
         if me is None:
             add("no mesh")
@@ -6999,7 +7073,9 @@ class GCAPTURE_OT_export_colmap(Operator):
             self._flt_gpu = None
             if not bpy.app.background:
                 try:
-                    self._flt_gpu = _ExpGpuDepth(targets)
+                    # Glass does not hide what lies behind it (1.2.1):
+                    # the cameras see a car's interior through the windows.
+                    self._flt_gpu = _ExpGpuDepth(targets, see_through=True)
                     self._flt_views = [
                         (f[0], _gcapture_look_dir_for(s, f[0], f[1], f[2], f[3]))
                         for f in faces]
@@ -7021,7 +7097,7 @@ class GCAPTURE_OT_export_colmap(Operator):
                           "using ray casting:", exc)
                     self._flt_gpu = None
             self._flt_bvh = (None if self._flt_gpu is not None
-                             else _exp_build_scene_bvh(targets))
+                             else _exp_build_scene_bvh(targets, see_through=True))
             self._flt_world = world_main
             self._flt_pts = pts
             self._flt_cols = cols
