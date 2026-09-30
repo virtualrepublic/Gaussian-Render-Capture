@@ -7,7 +7,7 @@ All notable changes to this project are doc­u­mented here. The project fol­lo
 changes that break exist­ing scenes or set­tings. Only changes to the add-on itself are listed;
 doc­u­men­ta­tion changes are not.
 
-## [1.3.1] – unreleased
+## [1.3.1] – 2026-09-30
 
 - The add-on ships as a ZIP (`gaussian_capture-1.3.1.zip`) instead of a single `.py` file:
   Blender 4.2 and later install it as an exten­sion, Blender 4.1 as an add-on, both with *Install
