@@ -68,10 +68,11 @@ On macOS use a trainer that reads COLMAP datasets.
 2. Enable **Gauss­ian Render Capture** (dis­able any older ver­sion first).
 3. The panel is in the 3D view­port side­bar (N), tab **Gauss­ian Render Capture** – press **Start Guide**.
 
-**Updat­ing from 1.3.0 or older** – up to 1.3.0 the add-on was a single file. First remove the old
-*Gauss­ian Render Capture* (`gaussian_capture.py`) in *Pref­er­ences → Add-ons*, then install the ZIP;
-enabling the new ver­sion next to the old one is refused with a mes­sage. Your scenes keep all
-set­tings.
+**Updat­ing** – restart Blender after installing a new ver­sion. Up to 1.3.0 the add-on was a single
+file: on Blender 4.2 and later first remove the old *Gauss­ian Render Capture* (`gaussian_capture.py`)
+in *Pref­er­ences → Add-ons*, then install the ZIP – enabling the new ver­sion next to the old one is
+refused with a mes­sage. On Blender 4.1 installing the ZIP replaces the old file. Your scenes keep
+all set­tings.
 
 **Upgrad­ing from Gauss­ian Render Scan (1.0.x)** – the add-on was renamed in 1.1.0. Disable and
 remove *Gauss­ian Render Scan*, then install the ZIP. Scenes made with it are taken

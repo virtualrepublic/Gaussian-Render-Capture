@@ -44,8 +44,9 @@ Con­tents: [0 Install](#0-install-the-add-on) · [Start the guide](#start-the-g
    **Install from Disk…**, then pick the ZIP. Blender 4.2 and later install it as an exten­sion.
 2. Tick **Gauss­ian Render Capture** to enable it.
 
-**Updat­ing from 1.3.0 or older:** first remove the old *Gauss­ian Render Capture*
-(`gaussian_capture.py`) in the same list, then install the ZIP.
+**Updat­ing:** restart Blender after installing a new ver­sion. Coming from 1.3.0 or older on
+Blender 4.2 and later, first remove the old *Gauss­ian Render Capture* (`gaussian_capture.py`) in
+the same list; on Blender 4.1 the ZIP replaces it.
 
 **Check:** in the 3D view­port, press **N** – the side­bar has a tab **Gauss­ian Render Capture**.
 

@@ -3,8 +3,9 @@
 # Troubleshooting
 
 **Enabling fails: "Remove the old Gauss­ian Render Capture (gaussian_capture.py) … first".** The
-single-file ver­sion up to 1.3.0 is still enabled. Remove it in *Pref­er­ences → Add-ons*, then
-enable the new ver­sion; your scenes keep all set­tings.
+single-file ver­sion up to 1.3.0 is still enabled (Blender 4.2 and later). Remove it in
+*Pref­er­ences → Add-ons*, restart Blender, then enable the new ver­sion; your scenes keep all
+set­tings.
 
 **A status line is red.** It names what is miss­ing – follow the blue button of the step. Red lines
 are not errors, they are the to-do list.
