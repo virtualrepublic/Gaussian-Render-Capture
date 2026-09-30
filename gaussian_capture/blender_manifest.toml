@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "gaussian_capture"
-version = "1.4.0"
+version = "1.3.1"
 name = "Gaussian Render Capture"
 tagline = "Synthetic COLMAP datasets for Gaussian Splatting"
 maintainer = "Prof. Michael Klein"

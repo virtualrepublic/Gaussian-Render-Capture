@@ -23,11 +23,8 @@ _GCAPTURE_PREPARE_SETTINGS = (
     ("cycles.volume_bounces", 32),
     ("cycles.transparent_max_bounces", 32),
     ("render.film_transparent", True),
-    # Glass opaque in alpha (1.3.0): panes show what lies behind them. With
-    # transparent glass they came out semi-transparent and blotchy, different
-    # in every view, and the splat got a haze there (Beetle, 27.09.2026).
-    # Prepare Scene then applies the option Transparent Glass.
-    ("cycles.film_transparent_glass", False),
+    # Transparent Glass is not set here (1.3.1): the scene keeps its own value,
+    # Blender's default off (opaque glass, see _gcapture_get_transparent_glass).
     ("view_settings.look", 'AgX - Base Contrast'),
     ("render.compositor_device", 'GPU'),
     ("eevee.fast_gi_thickness_near", 0.25),
@@ -90,16 +87,26 @@ def _gcapture_apply_prepare(scene, dtype):
     Intel drivers (PI_ERROR_INVALID_VALUE) -- even on the CPU. If Cycles
     renders with OptiX there, its denoiser does the denoising (v1.1.5)."""
     skipped = _gcapture_apply_settings(scene, _GCAPTURE_PREPARE_SETTINGS)
-    _gcapture_apply_see_through_glass(scene)
     _gcapture_fix_denoiser(scene, dtype)
     return skipped
 
 
-def _gcapture_apply_see_through_glass(scene):
-    """Transparent glass only if chosen (option Transparent Glass, 1.3.0)."""
-    cyc = getattr(scene, "cycles", None)
+def _gcapture_get_transparent_glass(settings):
+    """Option Transparent Glass = the scene's own Cycles setting (1.3.1,
+    maintainer 30.09.2026): an imported scene shows what it renders with, a
+    fresh one Blender's default off. Off is also the better choice for splats
+    seen through windows: glass stays opaque in alpha and shows what lies
+    behind it; transparent panes come out blotchy and leave a haze (Beetle,
+    27.09.2026)."""
+    cyc = getattr(settings.id_data, "cycles", None)
+    return bool(getattr(cyc, "film_transparent_glass", False))
+
+
+def _gcapture_set_transparent_glass(settings, value):
+    """Writes the option straight into the scene's Cycles setting (1.3.1)."""
+    cyc = getattr(settings.id_data, "cycles", None)
     if cyc is not None and hasattr(cyc, "film_transparent_glass"):
-        cyc.film_transparent_glass = scene.gcapture_settings.prep_see_through_glass
+        cyc.film_transparent_glass = bool(value)
 
 
 def _gcapture_fix_denoiser(scene, dtype):

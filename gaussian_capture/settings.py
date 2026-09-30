@@ -6,7 +6,8 @@ from bpy.props import StringProperty, IntProperty, EnumProperty, FloatProperty, 
 from bpy.types import PropertyGroup
 
 from .core.live_lock import _gcapture_on_lock_toggle
-from .core.render import _gcapture_apply_image_format, _gcapture_apply_see_through_glass
+from .core.render import (
+    _gcapture_apply_image_format, _gcapture_get_transparent_glass, _gcapture_set_transparent_glass)
 from .core.scene import _gcapture_apply_render_setup
 
 
@@ -475,16 +476,19 @@ class GCAPTURE_Settings(PropertyGroup):
     )
     prep_see_through_glass: BoolProperty(
         name="Transparent Glass",
-        description="Blender's Transparent Glass (Render Properties > Film): "
-                    "glass becomes transparent against the empty background. "
-                    "Only for objects that are mostly glass, or for splats shown "
-                    "in front of other backgrounds - the panes then come out "
-                    "semi-transparent and blotchy, a haze in the splat. Off "
-                    "(recommended): glass shows what lies behind it - a car's "
+        description="Blender's Transparent Glass (Render Properties > Film), shown "
+                    "and set here; the add-on never changes it otherwise. On: glass "
+                    "becomes transparent against the empty background. Only for "
+                    "objects that are mostly glass, or for splats shown in front of "
+                    "other backgrounds - the panes then come out semi-transparent "
+                    "and blotchy, a haze in the splat. Off (Blender's default, "
+                    "recommended): glass shows what lies behind it - a car's "
                     "interior stays clean; where the background is seen through "
                     "the glass, the world color of the scene appears",
-        default=False,
-        update=lambda self, context: _gcapture_apply_see_through_glass(context.scene),
+        # 1.3.1: mirrors the scene's Cycles setting instead of storing its own
+        # value, so an imported scene shows what it really renders with.
+        get=_gcapture_get_transparent_glass,
+        set=_gcapture_set_transparent_glass,
     )
     render_format: EnumProperty(
         name="Image Format",

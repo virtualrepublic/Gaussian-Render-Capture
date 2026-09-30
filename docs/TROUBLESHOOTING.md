@@ -87,8 +87,8 @@ the orig­i­nal file is untouched, delete the `_clean.ply`.
 LichtFeld, Post­shot). Close it there and press Clean Splat again.
 
 **Haze or blotches behind win­dows (e.g. a car's inte­rior).** Trans­par­ent glass ren­ders the panes
-semi-trans­par­ent and blotchy, dif­fer­ently in every view. Keep *Trans­par­ent Glass* (right below *Prepare
-Scene*) off, press *Prepare Scene* and render again. Export the dataset again as well: the start points behind glass are
+semi-trans­par­ent and blotchy, dif­fer­ently in every view. Switch *Trans­par­ent Glass* (right below *Prepare
+Scene*) off and render again. Export the dataset again as well: the start points behind glass are
 kept since ver­sion 1.3.0.
 
 **The glass looks grey or white in the splat.** With *Trans­par­ent Glass* off, glass shows the scene's

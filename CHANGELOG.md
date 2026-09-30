@@ -7,13 +7,16 @@ All notable changes to this project are doc­u­mented here. The project fol­lo
 changes that break exist­ing scenes or set­tings. Only changes to the add-on itself are listed;
 doc­u­men­ta­tion changes are not.
 
-## [1.4.0] – unreleased
+## [1.3.1] – unreleased
 
-- The add-on ships as a ZIP (`gaussian_capture-1.4.0.zip`) instead of a single `.py` file:
+- The add-on ships as a ZIP (`gaussian_capture-1.3.1.zip`) instead of a single `.py` file:
   Blender 4.2 and later install it as an exten­sion, Blender 4.1 as an add-on, both with *Install
   from Disk*. On Blender 4.1 the ZIP replaces an older `gaussian_capture.py`; on 4.2 and later
   remove it first – enabling the new ver­sion next to it is refused with a mes­sage. Restart
   Blender after installing. Scenes and set­tings are unchanged.
+- *Trans­par­ent Glass* shows and sets Blender's own set­ting (Render Prop­er­ties › Film): an opened
+  scene keeps what it has, a new scene stays at Blender's default off. *Prepare Scene* and
+  *Camera Sphere* no longer change it.
 
 ## [1.3.0] – 2026-09-27
 

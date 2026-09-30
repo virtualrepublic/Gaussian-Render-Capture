@@ -51,11 +51,10 @@ def _sph_apply_render_settings(scene):
     tryset(lambda: setattr(scene.cycles, "samples", 512),
            "Render samples 512")
 
-    # Film: Transparent + Transparent Glass.
+    # Film: Transparent. Transparent Glass stays as the scene has it (1.3.1):
+    # the user decides with the option next to Prepare Scene.
     tryset(lambda: setattr(scene.render, "film_transparent", True),
            "Film transparent")
-    tryset(lambda: setattr(scene.cycles, "film_transparent_glass", True),
-           "Film transparent glass")
 
     # World background: Color Value to 1 (white).
     def set_world_bg():

@@ -44,7 +44,7 @@ Code comments are in English.
 bl_info = {
     "name": "Gaussian Render Capture",
     "author": "Prof. Michael Klein - Mediadesign University of Applied Sciences",
-    "version": (1, 4, 0),
+    "version": (1, 3, 1),
     "blender": (4, 1, 0),
     "location": "View3D > Sidebar (N) > Gaussian Render Capture",
     "description": "Synthetic COLMAP datasets for Gaussian Splatting: camera "
@@ -134,7 +134,7 @@ classes = (
 
 
 def _gcapture_check_single_install():
-    """Refuse to register next to another copy (1.4.0): the old single file
+    """Refuse to register next to another copy (1.3.1): the old single file
     gaussian_capture.py enabled beside the package would register the same
     classes twice. Raises before anything is registered, so the other copy
     keeps working."""
