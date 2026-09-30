@@ -133,7 +133,20 @@ classes = (
 )
 
 
+def _gcapture_check_single_install():
+    """Refuse to register next to another copy (1.4.0): the old single file
+    gaussian_capture.py enabled beside the package would register the same
+    classes twice. Raises before anything is registered, so the other copy
+    keeps working."""
+    other = getattr(bpy.types, "GCAPTURE_PT_panel", None)
+    if other is not None and not other.__module__.startswith(__name__ + "."):
+        raise RuntimeError(
+            "Remove the old Gaussian Render Capture (gaussian_capture.py) in "
+            "Preferences → Add-ons first.")
+
+
 def register():
+    _gcapture_check_single_install()
     _gcapture_icons_load()
     for c in classes:
         bpy.utils.register_class(c)
