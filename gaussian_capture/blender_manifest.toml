@@ -1,0 +1,18 @@
+schema_version = "1.0.0"
+
+id = "gaussian_capture"
+version = "1.4.0"
+name = "Gaussian Render Capture"
+tagline = "Synthetic COLMAP datasets for Gaussian Splatting"
+maintainer = "Prof. Michael Klein"
+type = "add-on"
+website = "https://github.com/virtualrepublic/Gaussian-Render-Capture"
+tags = ["Camera", "Render", "Import-Export"]
+
+blender_version_min = "4.2.0"
+
+license = ["SPDX:GPL-3.0-or-later"]
+copyright = ["2026 Prof. Michael Klein", "2025 Arash Keshmirian / Warpgate Labs"]
+
+[permissions]
+files = "Write datasets, render scripts and cleaned splats"
