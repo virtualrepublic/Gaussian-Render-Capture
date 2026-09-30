@@ -7,7 +7,7 @@ The short­est way from a model to a Gauss­ian Splat. Each line is one click or
 
 | # | In Blender | You see |
 |---|---|---|
-| 1 | [Down­load](https://github.com/virtualrepublic/Gaussian-Render-Capture/releases/latest/download/gaussian_capture.py) and install `gaussian_capture.py` (*Pref­er­ences → Add-ons → Install from Disk*), enable it | Sidebar tab **Gauss­ian Render Capture** (press N) |
+| 1 | [Down­load](https://github.com/virtualrepublic/Gaussian-Render-Capture/releases/latest) the ZIP and install it (*Pref­er­ences → Add-ons → Install from Disk*), enable it | Sidebar tab **Gauss­ian Render Capture** (press N) |
 | 2 | Import your model | – |
 | 3 | **Start Guide** | Guide card, step 1 of 8 |
 | 4 | **Prepare Scene** | *Scene pre­pared (Cycles on GPU)* |

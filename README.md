@@ -61,14 +61,20 @@ Apple GPUs has not been tried yet – reports are wel­come in the
 For train­ing: Post­shot runs on Windows, LichtFeld Studio on Windows and Linux with an NVIDIA GPU.
 On macOS use a trainer that reads COLMAP datasets.
 
-**[⬇ Down­load gaussian_capture.py](https://github.com/virtualrepublic/Gaussian-Render-Capture/releases/latest/download/gaussian_capture.py)** (latest release)
+**[⬇ Latest release](https://github.com/virtualrepublic/Gaussian-Render-Capture/releases/latest)** – down­load `gaussian_capture-<version>.zip` there; do not unpack it.
 
-1. *Edit → Pref­er­ences → Add-ons → Install from Disk…* and pick the down­loaded `gaussian_capture.py`.
+1. *Edit → Pref­er­ences → Add-ons → Install from Disk…* and pick the down­loaded ZIP. Blender 4.2
+   and later install it as an exten­sion, Blender 4.1 as an add-on.
 2. Enable **Gauss­ian Render Capture** (dis­able any older ver­sion first).
 3. The panel is in the 3D view­port side­bar (N), tab **Gauss­ian Render Capture** – press **Start Guide**.
 
+**Updat­ing from 1.3.0 or older** – up to 1.3.0 the add-on was a single file. First remove the old
+*Gauss­ian Render Capture* (`gaussian_capture.py`) in *Pref­er­ences → Add-ons*, then install the ZIP;
+enabling the new ver­sion next to the old one is refused with a mes­sage. Your scenes keep all
+set­tings.
+
 **Upgrad­ing from Gauss­ian Render Scan (1.0.x)** – the add-on was renamed in 1.1.0. Disable and
-remove *Gauss­ian Render Scan*, then install `gaussian_capture.py`. Scenes made with it are taken
+remove *Gauss­ian Render Scan*, then install the ZIP. Scenes made with it are taken
 over auto­mat­i­cally when you open them (set­tings, camera sphere, live adjust­ments); save them to
 keep the new names.
 
